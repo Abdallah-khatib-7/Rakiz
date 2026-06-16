@@ -7,6 +7,9 @@ const passport = require('./config/passport');
 const walletRoutes = require('./modules/wallets/wallet.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const splitRoutes = require('./modules/splits/split.routes');
+const requestRoutes = require('./modules/requests/request.routes');
+const linkRoutes = require('./modules/links/link.routes');
+
 const app = express();
 
 // behind nginx in prod, need real client IP for rate limiting + fraud rules
@@ -49,6 +52,11 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/wallets', walletRoutes);
 app.use('/api/splits', splitRoutes);
+app.use('/api/requests', requestRoutes);
+app.use('/api/links', linkRoutes);
+
+
+
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
