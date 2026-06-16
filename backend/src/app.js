@@ -2,7 +2,10 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const passport = require('./config/passport');
+
+const authRoutes = require('./modules/auth/auth.routes');
 
 const app = express();
 
@@ -30,6 +33,8 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 app.use(morgan('dev'));
 
+app.use(cookieParser());
+
 app.use(passport.initialize());
 
 app.get('/api/health', (req, res) => {
@@ -41,6 +46,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // routes mounted here per module
+app.use('/api/auth', authRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
