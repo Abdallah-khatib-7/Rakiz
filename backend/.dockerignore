@@ -1,0 +1,20 @@
+node_modules
+npm-debug.log
+
+# Secrets never enter the image
+.env
+*.env.local
+
+# Logs
+logs
+*.log
+
+# Version control / meta
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# OS noise
+.DS_Store
+Thumbs.db

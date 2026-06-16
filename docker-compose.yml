@@ -1,0 +1,29 @@
+# Rakiz - development compose
+#
+# Containerizes the Node API only. In dev, MySQL runs natively on the Windows
+# host while MongoDB and Redis are cloud services, so this file deliberately
+# defines a single service.
+#
+# The container reaches the host's MySQL via host.docker.internal. We override
+# MYSQL_HOST here rather than editing backend/.env, so the same .env keeps
+# working for `npm run dev` outside Docker.
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rakiz-api
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override only what differs inside the container network.
+      MYSQL_HOST: host.docker.internal
+    ports:
+      - "${PORT:-5000}:5000"
+    extra_hosts:
+      # Lets the container resolve the host on Linux engines; harmless on
+      # Docker Desktop where it already exists.
+      - "host.docker.internal:host-gateway"
+    init: true
