@@ -4,7 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const passport = require('./config/passport');
-
+const walletRoutes = require('./modules/wallets/wallet.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 
 const app = express();
@@ -47,6 +47,8 @@ app.get('/api/health', (req, res) => {
 
 // routes mounted here per module
 app.use('/api/auth', authRoutes);
+app.use('/api/wallets', walletRoutes);
+
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
