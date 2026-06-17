@@ -5,6 +5,9 @@ const { v4: uuidv4 } = require('uuid');
 const tokens = require('./token.service');
 const { generateFingerprint, getClientIp } = require('../../utils/fingerprint');
 const { sendVerificationEmail, sendWelcomeEmail } = require('../../services/email.service');
+const { sendEmail } = require('../../config/mailer');
+const fraudService = require('../../services/fraud.service');
+const auditService = require('../../services/audit.service');
 
 const BCRYPT_COST = 12;
 const MIN_PASSWORD_SCORE = 2; // zxcvbn 0-4; below this is trivially guessable
@@ -90,6 +93,14 @@ const register = async (db, { email, password, full_name }, req) => {
     console.error(`Verification email failed for ${email}: ${err.message}`);
   }
 
+  await auditService.logEvent({
+    eventType: 'auth.register',
+    actorId: userId,
+    ipAddress: getClientIp(req),
+    deviceFingerprint: generateFingerprint(req),
+    metadata: { email },
+  });
+
   return { id: userId, email };
 };
 
@@ -126,9 +137,16 @@ const verifyEmail = async (db, token) => {
 };
 
 const login = async (db, { email, password }, req) => {
+  // Locked out from too many recent failed attempts on this email — reject
+  // before even touching the DB or comparing a password.
+  const lockedOut = await fraudService.isLockedOut(email);
+  if (lockedOut) {
+    throw httpError(429, 'Too many failed attempts. Try again in a few minutes.');
+  }
+
   const [rows] = await db.query(
     `SELECT id, email, password_hash, full_name, avatar_url, role, status,
-            subscription_tier, email_verified
+            subscription_tier, email_verified, last_login_ip
        FROM users
       WHERE email = ?
       LIMIT 1`,
@@ -143,6 +161,14 @@ const login = async (db, { email, password }, req) => {
   const ok = await bcrypt.compare(password, user?.password_hash || dummyHash);
 
   if (!user || !user.password_hash || !ok) {
+    const shouldLockout = await fraudService.recordFailedLogin(email);
+    await auditService.logEvent({
+      eventType: 'auth.login_failed',
+      actorId: user?.id || null,
+      ipAddress: getClientIp(req),
+      deviceFingerprint: generateFingerprint(req),
+      metadata: { email, locked_out: shouldLockout },
+    });
     throw httpError(401, 'Invalid email or password');
   }
 
@@ -154,13 +180,43 @@ const login = async (db, { email, password }, req) => {
     throw httpError(403, `Your account is ${user.status}`);
   }
 
+  // password was correct — clear any accumulated failed attempts
+  await fraudService.clearFailedLogins(email);
+
+  const currentIp = getClientIp(req);
+  const isNewIp = await fraudService.checkNewIpLogin(db, {
+    userId: user.id,
+    currentIp,
+    previousIp: user.last_login_ip,
+  });
+
+  if (isNewIp) {
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'New sign-in to your Rakiz account',
+        html: `<p>Hi ${user.full_name}, we noticed a sign-in to your account from a new location (${currentIp}). If this wasn't you, please secure your account immediately.</p>`,
+      });
+    } catch (err) {
+      console.error(`Suspicious login email failed for ${user.email}: ${err.message}`);
+    }
+  }
+
   const { refreshToken } = await createSession(db, user.id, req);
   const accessToken = tokens.signAccessToken(user);
 
   await db.query(
     'UPDATE users SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?',
-    [getClientIp(req), user.id]
+    [currentIp, user.id]
   );
+
+  await auditService.logEvent({
+    eventType: 'auth.login_success',
+    actorId: user.id,
+    ipAddress: currentIp,
+    deviceFingerprint: generateFingerprint(req),
+    metadata: { new_ip: isNewIp },
+  });
 
   return { accessToken, refreshToken, user: publicUser(user) };
 };

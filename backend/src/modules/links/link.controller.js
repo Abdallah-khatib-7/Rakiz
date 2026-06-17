@@ -54,7 +54,8 @@ const payLink = async (req, res, next) => {
         amount: req.body.amount,
         currency: req.body.currency,
         idempotencyKey,
-      }
+      },
+      req
     );
     res.json({ transaction: result });
   } catch (err) {

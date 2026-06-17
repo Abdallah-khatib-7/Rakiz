@@ -94,7 +94,7 @@ const getLinkByToken = async (db, token) => {
   return link;
 };
 
-const payLink = async (db, token, payerId, { amount, currency, idempotencyKey }) => {
+const payLink = async (db, token, payerId, { amount, currency, idempotencyKey }, req) => {
   if (!SUPPORTED.includes(currency)) {
     throw httpError(422, `Unsupported currency: ${currency}`);
   }
@@ -124,7 +124,8 @@ const payLink = async (db, token, payerId, { amount, currency, idempotencyKey })
     currency,
     targetCurrency: link.currency,
     note: link.description || `Payment link: ${token.slice(0, 8)}...`,
-  });
+    auditEventType: 'link.paid',
+  }, req);
 
   await db.query(
     'UPDATE payment_links SET use_count = use_count + 1 WHERE token = ?',

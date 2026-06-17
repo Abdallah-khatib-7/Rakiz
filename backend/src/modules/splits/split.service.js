@@ -157,7 +157,7 @@ const getUserSplits = async (db, userId, { page = 1, limit = 20 } = {}) => {
   };
 };
 
-const settleMember = async (db, splitId, userId, { currency, idempotencyKey }) => {
+const settleMember = async (db, splitId, userId, { currency, idempotencyKey }, req) => {
   if (!SUPPORTED.includes(currency)) {
     throw httpError(422, `Unsupported currency: ${currency}`);
   }
@@ -199,7 +199,8 @@ const settleMember = async (db, splitId, userId, { currency, idempotencyKey }) =
     targetCurrency: split.currency,
     note: `Split settlement: ${split.title}`,
     type: 'split_settle',
-  });
+    auditEventType: 'split.settled',
+  }, req);
 
   await db.query(
     'UPDATE split_members SET is_settled = TRUE, settled_at = NOW() WHERE split_id = ? AND user_id = ?',

@@ -32,7 +32,7 @@ const send = async (req, res, next) => {
       currency: req.body.currency,
       targetCurrency: req.body.target_currency,
       note: req.body.note,
-    });
+    }, req);
 
     res.status(201).json({ transaction: result });
   } catch (err) {

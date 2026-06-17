@@ -91,7 +91,7 @@ const getUserRequests = async (db, userId, { page = 1, limit = 20, type = 'all' 
   };
 };
 
-const payRequest = async (db, requestId, userId, { currency, idempotencyKey }) => {
+const payRequest = async (db, requestId, userId, { currency, idempotencyKey }, req) => {
   if (!SUPPORTED.includes(currency)) {
     throw httpError(422, `Unsupported currency: ${currency}`);
   }
@@ -121,7 +121,8 @@ const payRequest = async (db, requestId, userId, { currency, idempotencyKey }) =
     currency,
     targetCurrency: request.currency,
     note: `Payment request #${requestId}`,
-  });
+    auditEventType: 'request.paid',
+  }, req);
 
   await db.query(
     'UPDATE payment_requests SET status = ? WHERE id = ?',

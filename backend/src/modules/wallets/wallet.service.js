@@ -20,7 +20,7 @@ const getWallet = async (db, userId, currency) => {
   return getOrCreateWallet(db, userId, currency);
 };
 
-const send = async (db, senderId, { idempotencyKey, receiverEmail, amount, currency, targetCurrency, note }) => {
+const send = async (db, senderId, { idempotencyKey, receiverEmail, amount, currency, targetCurrency, note }, req) => {
   if (!SUPPORTED.includes(currency)) {
     throw Object.assign(new Error(`Unsupported currency: ${currency}`), { status: 422 });
   }
@@ -33,11 +33,9 @@ const send = async (db, senderId, { idempotencyKey, receiverEmail, amount, curre
     throw Object.assign(new Error('Idempotency key is required'), { status: 422 });
   }
 
-  // check for duplicate request
   const { duplicate, result } = await check(idempotencyKey);
   if (duplicate) return result;
 
-  // resolve receiver
   const [rows] = await db.query(
     'SELECT id, status FROM users WHERE email = ? LIMIT 1',
     [receiverEmail]
@@ -64,9 +62,9 @@ const send = async (db, senderId, { idempotencyKey, receiverEmail, amount, curre
     currency,
     targetCurrency: targetCurrency || currency,
     note,
-  });
+    auditEventType: 'transaction.sent',
+  }, req);
 
-  // cache the result so duplicate requests get the same response
   await save(idempotencyKey, txResult);
 
   return txResult;

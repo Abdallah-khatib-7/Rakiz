@@ -1,5 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const { convert } = require('./exchange.service');
+const fraudService = require('./fraud.service');
+const auditService = require('./audit.service');
+const { getClientIp, generateFingerprint } = require('../utils/fingerprint');
 
 // Ensures a wallet row exists for the given user + currency. Creates it on
 // demand if not — this is the only place wallet rows are born.
@@ -27,6 +30,10 @@ const getOrCreateWallet = async (db, userId, currency) => {
 // The core transfer function. Everything runs inside a single MySQL transaction
 // with SELECT FOR UPDATE locks so no two concurrent sends can race on the same
 // wallet. Double-entry: every debit has an exact matching credit.
+//
+// req is optional — pass it whenever the caller has an Express request handy
+// (which is every real HTTP-triggered transfer) so fraud checks and the audit
+// log get IP/fingerprint context. Internal/system transfers can omit it.
 const transfer = async (db, {
   idempotencyKey,
   senderId,
@@ -36,8 +43,11 @@ const transfer = async (db, {
   targetCurrency,
   note,
   type = 'transfer',
-}) => {
+  auditEventType = 'transaction.sent',
+}, req = null) => {
   const connection = await db.getConnection();
+
+  let senderBalanceBefore;
 
   try {
     await connection.beginTransaction();
@@ -57,6 +67,8 @@ const transfer = async (db, {
     const lockedSender = locked.find((w) => w.id === senderWallet.id);
     const lockedReceiver = locked.find((w) => w.id === receiverWallet.id);
 
+    senderBalanceBefore = parseFloat(lockedSender.balance);
+
     if (lockedSender.is_locked) {
       throw Object.assign(new Error('Your wallet is currently locked'), { status: 403 });
     }
@@ -65,7 +77,7 @@ const transfer = async (db, {
       throw Object.assign(new Error('Recipient wallet is currently locked'), { status: 403 });
     }
 
-    if (parseFloat(lockedSender.balance) < parseFloat(amount)) {
+    if (senderBalanceBefore < parseFloat(amount)) {
       throw Object.assign(new Error('Insufficient balance'), { status: 422 });
     }
 
@@ -128,7 +140,7 @@ const transfer = async (db, {
 
     await connection.commit();
 
-    return {
+    const result = {
       transactionId: txResult.insertId,
       ledgerEntryId,
       amount,
@@ -137,6 +149,46 @@ const transfer = async (db, {
       convertedCurrency: isCross ? targetCurrency : null,
       rate: isCross ? rate : null,
     };
+
+    // fraud checks and audit logging run after commit, on the main pool (not
+    // the released connection). They never block or roll back a completed
+    // transfer — they flag for review. A failure here should never surface as
+    // a failed payment to the user, so each step is isolated.
+    try {
+      await fraudService.checkAmountAnomaly(db, {
+        userId: senderId,
+        amount: parseFloat(amount),
+        currency,
+        ledgerEntryId,
+      });
+
+      await fraudService.checkVelocity(db, {
+        userId: senderId,
+        ledgerEntryId,
+      });
+
+      await fraudService.checkBalanceDrain(db, {
+        userId: senderId,
+        ledgerEntryId,
+        balanceBefore: senderBalanceBefore,
+        amount: parseFloat(amount),
+      });
+    } catch (err) {
+      console.error(`Fraud check failed for ledger entry ${ledgerEntryId}: ${err.message}`);
+    }
+
+    if (req) {
+      await auditService.logEvent({
+        eventType: auditEventType,
+        actorId: senderId,
+        targetId: receiverId,
+        ipAddress: getClientIp(req),
+        deviceFingerprint: generateFingerprint(req),
+        metadata: { amount, currency, ledgerEntryId, type },
+      });
+    }
+
+    return result;
   } catch (err) {
     await connection.rollback();
     throw err;

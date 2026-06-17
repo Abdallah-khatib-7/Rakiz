@@ -44,7 +44,8 @@ const payRequest = async (req, res, next) => {
       {
         currency: req.body.currency,
         idempotencyKey,
-      }
+      },
+      req
     );
     res.json({ transaction: result });
   } catch (err) {
