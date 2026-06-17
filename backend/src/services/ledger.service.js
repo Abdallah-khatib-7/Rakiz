@@ -3,6 +3,8 @@ const { convert } = require('./exchange.service');
 const fraudService = require('./fraud.service');
 const auditService = require('./audit.service');
 const { getClientIp, generateFingerprint } = require('../utils/fingerprint');
+const { emitToUser } = require('./socket.service');
+const { createNotification } = require('../modules/notifications/notification.service');
 
 // Ensures a wallet row exists for the given user + currency. Creates it on
 // demand if not — this is the only place wallet rows are born.
@@ -186,6 +188,61 @@ const transfer = async (db, {
         deviceFingerprint: generateFingerprint(req),
         metadata: { amount, currency, ledgerEntryId, type },
       });
+    }
+
+    // Real-time push, fire-and-forget. Wrapped so a socket hiccup can never
+    // surface as a failed payment — the money has already moved and committed
+    // by this point, this is purely a UX nicety on top of it.
+    try {
+      const [freshWallets] = await db.query(
+        'SELECT id, user_id, currency, balance FROM wallets WHERE id IN (?)',
+        [walletIds]
+      );
+      const senderFresh = freshWallets.find((w) => w.user_id === senderId);
+      const receiverFresh = freshWallets.find((w) => w.user_id === receiverId);
+
+      if (senderFresh) {
+        emitToUser(senderId, 'balance:updated', {
+          walletId: senderFresh.id,
+          currency: senderFresh.currency,
+          balance: senderFresh.balance,
+        });
+        emitToUser(senderId, 'transaction:sent', result);
+      }
+
+      if (receiverFresh) {
+        const receivedAmount = isCross ? convertedAmount : amount;
+        const receivedCurrency = isCross ? targetCurrency : currency;
+
+        emitToUser(receiverId, 'balance:updated', {
+          walletId: receiverFresh.id,
+          currency: receiverFresh.currency,
+          balance: receiverFresh.balance,
+        });
+        emitToUser(receiverId, 'transaction:received', {
+          ...result,
+          amount: receivedAmount,
+          currency: receivedCurrency,
+        });
+
+        // Only the receiver gets notified — they didn't initiate this, so
+        // it's genuinely new information for them. The sender already knows.
+        const [[senderInfo]] = await db.query(
+          'SELECT full_name FROM users WHERE id = ? LIMIT 1',
+          [senderId]
+        );
+
+        await createNotification(db, {
+          userId: receiverId,
+          type: 'transaction_received',
+          title: 'Money received',
+          body: `${senderInfo?.full_name || 'Someone'} sent you ${receivedAmount} ${receivedCurrency}`,
+          referenceId: txResult.insertId,
+          referenceType: 'transaction',
+        });
+      }
+    } catch (err) {
+      console.error(`Real-time emit failed for ledger entry ${ledgerEntryId}: ${err.message}`);
     }
 
     return result;

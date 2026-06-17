@@ -2,6 +2,8 @@ const { transfer, getOrCreateWallet } = require('../../services/ledger.service')
 const { check, save } = require('../../services/idempotency.service');
 const { SUPPORTED } = require('../../services/exchange.service');
 const { v4: uuidv4 } = require('uuid');
+const { emitToUser } = require('../../services/socket.service');
+const { createNotification } = require('../notifications/notification.service');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
@@ -213,7 +215,9 @@ const settleMember = async (db, splitId, userId, { currency, idempotencyKey }, r
     [splitId]
   );
 
+  let newStatus = split.status;
   if (!unsettled.length) {
+    newStatus = 'settled';
     await db.query(
       'UPDATE splits SET status = ?, settled_at = NOW() WHERE id = ?',
       ['settled', splitId]
@@ -221,6 +225,58 @@ const settleMember = async (db, splitId, userId, { currency, idempotencyKey }, r
   }
 
   await save(iKey, txResult);
+
+  // Notify every member of the split that something changed, not just the
+  // creator — anyone watching this split's progress should see it update live.
+  try {
+    const [allMembers] = await db.query(
+      'SELECT user_id FROM split_members WHERE split_id = ?',
+      [splitId]
+    );
+
+    const payload = {
+      splitId,
+      settledBy: userId,
+      status: newStatus,
+    };
+
+    const recipientIds = new Set([
+      split.created_by,
+      ...allMembers.map((m) => m.user_id),
+    ]);
+
+    for (const recipientId of recipientIds) {
+      emitToUser(recipientId, 'split:updated', payload);
+    }
+  } catch (err) {
+    console.error(`split:updated emit failed for split ${splitId}: ${err.message}`);
+  }
+
+  // The creator gets a persisted notification, separate from the live emit
+  // above — the member who just paid already knows they paid, this is for
+  // the person collecting. If settling closes the whole split, say that
+  // instead of just "someone paid their share".
+  try {
+    const [[settlerInfo]] = await db.query(
+      'SELECT full_name FROM users WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    const body = newStatus === 'settled'
+      ? `${settlerInfo?.full_name || 'A member'} settled their share, completing "${split.title}"`
+      : `${settlerInfo?.full_name || 'A member'} settled their share of "${split.title}"`;
+
+    await createNotification(db, {
+      userId: split.created_by,
+      type: 'split_settled',
+      title: newStatus === 'settled' ? 'Split fully settled' : 'Split share settled',
+      body,
+      referenceId: splitId,
+      referenceType: 'split',
+    });
+  } catch (err) {
+    console.error(`Split notification failed for split ${splitId}: ${err.message}`);
+  }
 
   return txResult;
 };

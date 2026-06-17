@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const app = require('./app');
 const { connectMySQL, connectMongoDB } = require('./config/db');
 const { connectRedis } = require('./config/redis');
+const { initSocket } = require('./services/socket.service');
 
 const PORT = process.env.PORT || 5000;
 
@@ -17,7 +18,11 @@ const io = new Server(server, {
   },
 });
 
-// expose io to the rest of the app via the socket service later
+initSocket(io);
+
+// expose io to the rest of the app via the socket service, kept for any
+// route handler that wants the raw instance — most code should just import
+// emitToUser from socket.service instead
 app.set('io', io);
 
 const start = async () => {

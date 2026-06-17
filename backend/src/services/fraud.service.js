@@ -1,4 +1,6 @@
 const { getRedis } = require('../config/redis');
+const { emitToUser } = require('./socket.service');
+const { createNotification } = require('../modules/notifications/notification.service');
 
 // Tunable thresholds. Kept as constants here rather than buried in logic so
 // they're easy to find and adjust as real usage patterns emerge.
@@ -10,12 +12,46 @@ const VELOCITY_MAX_TRANSACTIONS = 5;
 const FAILED_LOGIN_WINDOW_SECONDS = 60 * 15;
 const FAILED_LOGIN_MAX_ATTEMPTS = 5;
 
+// Human-readable text per rule, used for the notification body. Kept here
+// rather than in the notification service since this is the only place that
+// knows what each rule means.
+const RULE_MESSAGES = {
+  large_amount: 'A large transaction on your account was flagged for review.',
+  velocity_exceeded: 'Unusual transaction frequency was detected on your account.',
+  balance_drain: 'A transaction drained most of your wallet balance.',
+  new_ip_login: 'Your account was signed into from a new location.',
+};
+
 const flag = async (db, { userId, ledgerEntryId = null, rule, severity }) => {
   await db.query(
     `INSERT INTO fraud_flags (user_id, ledger_entry_id, rule_triggered, severity, status)
      VALUES (?, ?, ?, ?, 'open')`,
     [userId, ledgerEntryId, rule, severity]
   );
+
+  // Real-time nudge to the affected user. Fire-and-forget, same pattern as
+  // everywhere else — a flag is already safely in the DB by this point, the
+  // socket push is just a UX layer on top.
+  try {
+    emitToUser(userId, 'fraud:alert', { rule, severity, ledgerEntryId });
+  } catch (err) {
+    console.error(`Fraud alert emit failed for user ${userId}: ${err.message}`);
+  }
+
+  // Persist a notification too, not just a live event — the person should
+  // still see this if they were offline when it happened.
+  try {
+    await createNotification(db, {
+      userId,
+      type: 'fraud_alert',
+      title: 'Account activity flagged',
+      body: RULE_MESSAGES[rule] || 'Unusual activity was detected on your account.',
+      referenceId: ledgerEntryId,
+      referenceType: ledgerEntryId ? 'ledger_entry' : null,
+    });
+  } catch (err) {
+    console.error(`Fraud notification failed for user ${userId}: ${err.message}`);
+  }
 };
 
 // Called right before a transfer is allowed to proceed. Doesn't block by
