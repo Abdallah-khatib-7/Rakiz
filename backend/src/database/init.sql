@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   last_login_at DATETIME NULL,
-  last_login_ip VARCHAR(45) NULL,
+  last_login_ip VARCHAR(255) NULL,
   INDEX idx_users_email (email),
   INDEX idx_users_google_id (google_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   refresh_token_hash VARCHAR(255) NOT NULL,
   family_id VARCHAR(36) NOT NULL,
   device_fingerprint VARCHAR(255) NULL,
-  ip_address VARCHAR(45) NULL,
+  ip_address VARCHAR(255) NULL,
   user_agent VARCHAR(512) NULL,
   is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

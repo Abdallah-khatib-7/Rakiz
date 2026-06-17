@@ -8,6 +8,7 @@ const { sendVerificationEmail, sendWelcomeEmail } = require('../../services/emai
 const { sendEmail } = require('../../config/mailer');
 const fraudService = require('../../services/fraud.service');
 const auditService = require('../../services/audit.service');
+const { encrypt, decrypt } = require('../../utils/encryption');
 
 const BCRYPT_COST = 12;
 const MIN_PASSWORD_SCORE = 2; // zxcvbn 0-4; below this is trivially guessable
@@ -34,6 +35,8 @@ const publicUser = (u) => ({
 // Creates a fresh session row and returns the raw refresh token. The raw token
 // only ever lives in the response cookie; the DB keeps its hash. Passing a
 // familyId reuses an existing family (rotation); omit it to start a new one.
+// ip_address is stored encrypted — it's PII and this table is otherwise just
+// session bookkeeping, no reason to keep it in the clear at rest.
 const createSession = async (db, userId, req, familyId = null) => {
   const refreshToken = tokens.generateRefreshToken();
   const family = familyId || uuidv4();
@@ -48,7 +51,7 @@ const createSession = async (db, userId, req, familyId = null) => {
       tokens.hashRefreshToken(refreshToken),
       family,
       generateFingerprint(req),
-      getClientIp(req),
+      encrypt(getClientIp(req)),
       (req.get('user-agent') || '').slice(0, 512),
       tokens.refreshExpiryDate(),
     ]
@@ -184,10 +187,22 @@ const login = async (db, { email, password }, req) => {
   await fraudService.clearFailedLogins(email);
 
   const currentIp = getClientIp(req);
+
+  // last_login_ip is stored encrypted; decrypt before comparing so the fraud
+  // check works against plaintext on both sides. A null/garbled stored value
+  // decrypts to null rather than throwing, so older or pre-encryption rows
+  // degrade gracefully instead of breaking login.
+  let previousIp = null;
+  try {
+    previousIp = user.last_login_ip ? decrypt(user.last_login_ip) : null;
+  } catch (err) {
+    previousIp = null;
+  }
+
   const isNewIp = await fraudService.checkNewIpLogin(db, {
     userId: user.id,
     currentIp,
-    previousIp: user.last_login_ip,
+    previousIp,
   });
 
   if (isNewIp) {
@@ -207,7 +222,7 @@ const login = async (db, { email, password }, req) => {
 
   await db.query(
     'UPDATE users SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?',
-    [currentIp, user.id]
+    [encrypt(currentIp), user.id]
   );
 
   await auditService.logEvent({
