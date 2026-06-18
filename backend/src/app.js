@@ -11,7 +11,7 @@ const requestRoutes = require('./modules/requests/request.routes');
 const linkRoutes = require('./modules/links/link.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
 const aiRoutes = require('./modules/ai/ai.routes');
-
+const adminRoutes = require('./modules/admin/admin.routes');
 
 const app = express();
 
@@ -59,7 +59,7 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/links', linkRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
-
+app.use('/api/admin', adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
