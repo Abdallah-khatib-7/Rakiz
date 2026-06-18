@@ -15,7 +15,12 @@ const connectMySQL = async () => {
       password: process.env.MYSQL_PASSWORD,
       database: process.env.MYSQL_DATABASE,
       waitForConnections: true,
-      connectionLimit: 10,
+      // 10 was fine for solo local testing but starves fast under real
+      // concurrent traffic — every request that touches the DB holds a
+      // connection for the duration of its query. 25 gives meaningfully more
+      // headroom without overwhelming a small MySQL instance; revisit this
+      // number after real load testing rather than guessing further.
+      connectionLimit: 25,
       queueLimit: 0,
       decimalNumbers: true,
     });

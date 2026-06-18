@@ -17,3 +17,20 @@
   or VPC peering.
 - Risk during development: Low — database still requires valid credentials,
   but anyone with the connection string could attempt to connect.
+
+
+  ## Scaling & performance hardening (scheduled for Phase 9.5 / Phase 10)
+- [ ] Wallet balance caching in Redis, with airtight invalidation on every
+      write inside ledger.service.js transfer(). Stale balance reads are a
+      real correctness bug in a financial app, not just a performance nit.
+- [ ] Socket.io Redis adapter — required once running 2+ server instances
+      behind a load balancer, so emits reach users connected to a different
+      instance than the one that fired the event. Not needed for single
+      instance (current state).
+- [ ] Rate limiter Redis backing — currently in-memory (per rateLimiter.js
+      comment), only correct for a single instance. Same trigger as above.
+- [ ] Load testing (autocannon or k6) against realistic concurrent traffic
+      to find actual bottlenecks instead of guessing. Should happen before
+      tuning connection pools, indexes, or cache TTLs further.
+- [ ] Database index audit based on real slow-query logs once load testing
+      reveals what's actually slow.
