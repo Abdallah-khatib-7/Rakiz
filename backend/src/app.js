@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const passport = require('./config/passport');
+const subscriptionRoutes = require('./modules/subscriptions/subscription.routes');
 const walletRoutes = require('./modules/wallets/wallet.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const splitRoutes = require('./modules/splits/split.routes');
@@ -32,6 +33,15 @@ app.use(
     credentials: true,
   })
 );
+
+// Stripe webhook must be mounted before express.json() below — it needs the
+// raw body for signature verification, and once express.json() consumes the
+// stream the raw bytes are gone. Mounting the whole subscriptions router here
+// (instead of with the others further down) keeps this ordering constraint
+// visible in one place. The router itself applies express.raw() only to its
+// /webhook path; its other routes (checkout, portal) use normal JSON further
+// down the chain like everything else.
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // keep payloads small, financial endpoints don't need more than this
 app.use(express.json({ limit: '10kb' }));

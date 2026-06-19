@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   status ENUM('active', 'frozen', 'suspended') NOT NULL DEFAULT 'active',
   subscription_tier ENUM('free', 'pro', 'business') NOT NULL DEFAULT 'free',
   subscription_expires_at DATETIME NULL,
+  stripe_customer_id VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   last_login_at DATETIME NULL,
