@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f0f13;
+  --surface: #18181f;
+  --surface-2: #1f1f28;
+  --border: #2a2a35;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --accent: #7c3aed;
+  --muted: #6b7280;
+  --muted-fg: #9ca3af;
+  --destructive: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --text: #f9fafb;
+  --text-muted: #9ca3af;
+  --radius: 0.75rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a48;
+}
+
+@keyframes tickerScroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}

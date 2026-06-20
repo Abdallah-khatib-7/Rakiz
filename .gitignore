@@ -27,3 +27,5 @@ build/
 
 # Docker
 *.env.local
+
+.claude/
