@@ -14,6 +14,7 @@ import { AIPage } from '@/pages/ai/AIPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { SubscriptionsPage } from '@/pages/subscriptions/SubscriptionsPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
+import { LandingPage } from '@/pages/LandingPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/pay/:token" element={<PayLinkPage />} />

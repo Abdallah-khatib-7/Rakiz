@@ -42,12 +42,9 @@ const RATES = [
   { pair: 'LBP / SAR', rate: '0.0000',  change: '+0.00%', up: true  },
 ]
 
-/* ─── Ticker column (CSS scroll animation, framer wraps it for parallax) ─── */
+/* ─── Ticker column ─── */
 function TickerColumn({
-  rates,
-  duration,
-  delay,
-  highlightIdx,
+  rates, duration, delay, highlightIdx,
 }: {
   rates: typeof RATES
   duration: string
@@ -57,50 +54,29 @@ function TickerColumn({
   const doubled = [...rates, ...rates]
   return (
     <div className="overflow-hidden h-full relative">
-      <div
-        style={{
-          animation: `tickerScroll ${duration} linear infinite`,
-          animationDelay: delay,
-          willChange: 'transform',
-        }}
-      >
+      <div style={{ animation: `tickerScroll ${duration} linear infinite`, animationDelay: delay, willChange: 'transform' }}>
         {doubled.map((r, i) => {
           const isHighlight = i % rates.length === highlightIdx
           return (
-            <div
-              key={i}
-              style={{
-                padding: '11px 8px',
-                opacity: isHighlight ? 0.85 : i % 6 === 2 ? 0.18 : 0.07,
-              }}
-            >
+            <div key={i} style={{ padding: '11px 8px', opacity: isHighlight ? 0.88 : i % 6 === 2 ? 0.18 : 0.06 }}>
               <span style={{
-                display: 'block',
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: '9.5px',
-                letterSpacing: '0.06em',
-                color: isHighlight ? 'rgba(200,200,220,0.9)' : '#9090a8',
-                marginBottom: '2px',
+                display: 'block', fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '9px', letterSpacing: '0.08em',
+                color: isHighlight ? 'rgba(167,243,208,0.75)' : '#2d5c4a', marginBottom: '2px',
               }}>
                 {r.pair}
               </span>
               <span style={{
-                display: 'block',
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: '14px',
-                fontWeight: 500,
-                letterSpacing: '0.02em',
-                color: isHighlight ? (r.up ? '#4ade80' : '#f87171') : '#c8c8d8',
+                display: 'block', fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '13.5px', fontWeight: 500, letterSpacing: '0.02em',
+                color: isHighlight ? (r.up ? '#34d399' : '#f87171') : '#1e4a38',
               }}>
                 {r.rate}
               </span>
               <span style={{
-                display: 'block',
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: '9px',
-                letterSpacing: '0.04em',
-                color: isHighlight ? (r.up ? '#4ade80' : '#f87171') : '#606078',
-                marginTop: '1px',
+                display: 'block', fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '8.5px', letterSpacing: '0.04em',
+                color: isHighlight ? (r.up ? '#34d399' : '#f87171') : '#163829', marginTop: '1px',
               }}>
                 {r.change}
               </span>
@@ -127,28 +103,22 @@ function GoogleIcon() {
 /* ─── Stagger variants ─── */
 const container = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.09, delayChildren: 0.18 } },
+  show: { transition: { staggerChildren: 0.09, delayChildren: 0.2 } },
 }
-
 const fadeUp = {
   hidden: { opacity: 0, y: 18, filter: 'blur(4px)' },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: 'blur(0px)',
-    transition: { duration: 0.55, ease: 'easeOut' as const },
-  },
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.55, ease: 'easeOut' as const } },
 }
-
 const headlineFade = {
   hidden: { opacity: 0, y: 28, filter: 'blur(6px)' },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: 'blur(0px)',
-    transition: { duration: 0.7, ease: 'easeOut' as const },
-  },
+  show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.7, ease: 'easeOut' as const } },
 }
+
+const STATS = [
+  { value: '12,800+', label: 'Active Users' },
+  { value: 'SAR 4M+', label: 'Daily Volume'  },
+  { value: '98.7%',   label: 'Success Rate'  },
+]
 
 /* ─── Page ─── */
 export function LoginPage() {
@@ -160,13 +130,11 @@ export function LoginPage() {
     resolver: zodResolver(schema),
   })
 
-  /* scroll-based parallax */
   const { scrollY } = useScroll()
   const scrollCol1 = useTransform(scrollY, [0, 500], [0, -45])
   const scrollCol2 = useTransform(scrollY, [0, 500], [0, -70])
   const scrollCol3 = useTransform(scrollY, [0, 500], [0, -30])
 
-  /* mouse-tracked parallax */
   const rawMouseX = useMotionValue(0)
   const rawMouseY = useMotionValue(0)
   const smoothX = useSpring(rawMouseX, { stiffness: 38, damping: 24 })
@@ -179,12 +147,10 @@ export function LoginPage() {
   const mouseCol3X = useTransform(smoothX, [-1, 1], [ -6,   6])
   const mouseCol3Y = useTransform(smoothY, [-1, 1], [-12,  12])
 
-  /* combine scroll + mouse Y per column */
   const col1Y = useTransform([scrollCol1, mouseCol1Y], ([s, m]: number[]) => s + m)
   const col2Y = useTransform([scrollCol2, mouseCol2Y], ([s, m]: number[]) => s + m)
   const col3Y = useTransform([scrollCol3, mouseCol3Y], ([s, m]: number[]) => s + m)
 
-  /* glow tracks mouse */
   const glowX = useTransform(smoothX, [-1, 1], ['-80px', '80px'])
   const glowY = useTransform(smoothY, [-1, 1], ['-60px', '60px'])
 
@@ -196,7 +162,6 @@ export function LoginPage() {
     rawMouseX.set(((clientX - left) / width)  * 2 - 1)
     rawMouseY.set(((clientY - top)  / height) * 2 - 1)
   }
-
   function handleMouseLeave() {
     rawMouseX.set(0)
     rawMouseY.set(0)
@@ -223,69 +188,200 @@ export function LoginPage() {
   return (
     <div
       className="flex min-h-screen"
-      style={{ background: '#09090c' }}
+      style={{ background: '#060d0a' }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
 
-      {/* ── Left: FX Ticker panel ── */}
+      {/* ── Left: Brand Showcase ── */}
       <motion.div
-        className="hidden lg:block relative flex-1 overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #07070b 0%, #0c0c14 100%)' }}
+        className="hidden lg:flex flex-col relative flex-1 overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, #060d0a 0%, #071410 60%, #060d0a 100%)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.4, delay: 0.3 }}
       >
-        {/* top fade */}
-        <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none"
-          style={{ height: '180px', background: 'linear-gradient(to bottom, #07070b, transparent)' }}
-        />
-        {/* bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
-          style={{ height: '180px', background: 'linear-gradient(to top, #07070b, transparent)' }}
-        />
-        {/* radial vignette */}
-        <div className="absolute inset-0 z-10 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 80% 80% at 50% 50%, transparent 20%, rgba(7,7,11,0.65) 100%)' }}
-        />
+        {/* Subtle dot grid */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: 'radial-gradient(rgba(16,185,129,0.07) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+        }} />
 
-        {/* Three parallax-driven ticker columns */}
-        <div className="absolute inset-0 grid" style={{ gridTemplateColumns: '1fr 1fr 1fr', padding: '0 20px' }}>
-          <motion.div className="h-full" style={{ y: col1Y, x: mouseCol1X }}>
-            <TickerColumn rates={col1Rates} duration="44s" delay="0s" highlightIdx={2} />
-          </motion.div>
-          <motion.div className="h-full" style={{ y: col2Y, x: mouseCol2X }}>
-            <TickerColumn rates={col2Rates} duration="61s" delay="-18s" highlightIdx={5} />
-          </motion.div>
-          <motion.div className="h-full" style={{ y: col3Y, x: mouseCol3X }}>
-            <TickerColumn rates={col3Rates} duration="52s" delay="-9s" highlightIdx={1} />
+        {/* Top-right ambient glow */}
+        <div className="absolute pointer-events-none" style={{
+          top: '-15%', right: '-10%', width: '600px', height: '600px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 65%)',
+        }} />
+
+        {/* Bottom-left ambient glow */}
+        <div className="absolute pointer-events-none" style={{
+          bottom: '10%', left: '-10%', width: '400px', height: '400px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(16,185,129,0.04) 0%, transparent 70%)',
+        }} />
+
+        {/* Logo */}
+        <motion.div
+          className="relative z-20 flex items-center gap-2.5"
+          style={{ padding: '40px 48px' }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+        >
+          <div style={{
+            height: '34px', width: '34px', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #047857, #10b981)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 0 22px rgba(16,185,129,0.35)',
+          }}>
+            <span style={{ color: 'white', fontWeight: 700, fontSize: '16px', fontFamily: '"Space Grotesk", sans-serif' }}>R</span>
+          </div>
+          <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 600, fontSize: '18px', color: '#d1fae5', letterSpacing: '-0.025em' }}>
+            Rakiz
+          </span>
+        </motion.div>
+
+        {/* Hero content */}
+        <div className="relative z-20 flex flex-col justify-center flex-1 px-12" style={{ paddingBottom: '20px' }}>
+
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+            style={{
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: '10px', letterSpacing: '0.22em',
+              textTransform: 'uppercase', color: '#10b981', marginBottom: '20px',
+            }}
+          >
+            Global money transfer
+          </motion.p>
+
+          <motion.h2
+            initial={{ opacity: 0, y: 28, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.85, delay: 0.85 }}
+            style={{
+              fontFamily: '"Space Grotesk", sans-serif',
+              fontSize: '48px', fontWeight: 700,
+              color: '#ecfdf5', letterSpacing: '-0.04em',
+              lineHeight: 1.06, marginBottom: '20px',
+            }}
+          >
+            Move money<br />
+            <span style={{
+              background: 'linear-gradient(135deg, #34d399, #10b981)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>
+              without borders.
+            </span>
+          </motion.h2>
+
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.05 }}
+            style={{
+              fontSize: '15px', color: 'rgba(236,253,245,0.38)',
+              fontFamily: '"Inter", sans-serif', lineHeight: 1.65,
+              maxWidth: '360px', marginBottom: '44px',
+            }}
+          >
+            Send funds across the Middle East instantly. Competitive rates, zero hidden fees.
+          </motion.p>
+
+          {/* Stat cards */}
+          <motion.div
+            className="flex gap-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 1.2 }}
+          >
+            {STATS.map((s, i) => (
+              <motion.div
+                key={s.label}
+                style={{
+                  flex: 1, padding: '16px 14px', borderRadius: '14px',
+                  background: 'rgba(16,185,129,0.05)',
+                  border: '1px solid rgba(16,185,129,0.13)',
+                }}
+                whileHover={{ background: 'rgba(16,185,129,0.09)', borderColor: 'rgba(16,185,129,0.22)' }}
+                transition={{ duration: 0.2 }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div style={{
+                  fontFamily: '"Space Grotesk", sans-serif',
+                  fontSize: '21px', fontWeight: 700,
+                  background: i === 0
+                    ? 'linear-gradient(135deg, #34d399, #6ee7b7)'
+                    : i === 1
+                      ? 'linear-gradient(135deg, #10b981, #34d399)'
+                      : 'linear-gradient(135deg, #6ee7b7, #a7f3d0)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  letterSpacing: '-0.03em', marginBottom: '5px',
+                }}>
+                  {s.value}
+                </div>
+                <div style={{
+                  fontFamily: '"Inter", sans-serif',
+                  fontSize: '11px', color: 'rgba(236,253,245,0.3)',
+                  letterSpacing: '0.02em',
+                }}>
+                  {s.label}
+                </div>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
 
-        {/* Byline */}
+        {/* FX Ticker ─ bottom strip */}
+        <div className="relative flex-shrink-0" style={{ height: '260px' }}>
+          <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none"
+            style={{ height: '100px', background: 'linear-gradient(to bottom, #060d0a, transparent)' }}
+          />
+          <div className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
+            style={{ height: '70px', background: 'linear-gradient(to top, #060d0a, transparent)' }}
+          />
+          <div className="absolute inset-0 z-10 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse 80% 80% at 50% 50%, transparent 20%, rgba(6,13,10,0.55) 100%)' }}
+          />
+          <div className="absolute inset-0 grid" style={{ gridTemplateColumns: '1fr 1fr 1fr', padding: '0 20px' }}>
+            <motion.div className="h-full" style={{ y: col1Y, x: mouseCol1X }}>
+              <TickerColumn rates={col1Rates} duration="44s" delay="0s" highlightIdx={2} />
+            </motion.div>
+            <motion.div className="h-full" style={{ y: col2Y, x: mouseCol2X }}>
+              <TickerColumn rates={col2Rates} duration="61s" delay="-18s" highlightIdx={5} />
+            </motion.div>
+            <motion.div className="h-full" style={{ y: col3Y, x: mouseCol3X }}>
+              <TickerColumn rates={col3Rates} duration="52s" delay="-9s" highlightIdx={1} />
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Live rates label */}
         <motion.div
-          className="absolute bottom-10 left-9 z-20"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
+          className="relative z-20 flex items-center gap-2.5 pb-8 pl-12"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.5 }}
         >
+          <span className="live-dot" />
           <p style={{
             fontFamily: '"JetBrains Mono", monospace',
-            fontSize: '10px', letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.12)', margin: 0,
+            fontSize: '9.5px', letterSpacing: '0.2em',
+            textTransform: 'uppercase', color: 'rgba(236,253,245,0.18)', margin: 0,
           }}>
             Live exchange rates
           </p>
         </motion.div>
       </motion.div>
 
-      {/* ── Divider: draws in from center ── */}
+      {/* ── Divider ── */}
       <motion.div
         className="hidden lg:block flex-shrink-0"
         style={{
           width: '1px',
-          background: 'linear-gradient(180deg, transparent 0%, rgba(79,70,229,0.38) 25%, rgba(79,70,229,0.38) 75%, transparent 100%)',
+          background: 'linear-gradient(180deg, transparent 0%, rgba(16,185,129,0.22) 30%, rgba(16,185,129,0.22) 70%, transparent 100%)',
           originY: 0.5,
         }}
         initial={{ scaleY: 0, opacity: 0 }}
@@ -296,71 +392,67 @@ export function LoginPage() {
       {/* ── Right: Form panel ── */}
       <div
         className="relative flex flex-col justify-center w-full"
-        style={{ maxWidth: '480px', padding: '64px 52px', background: '#0f0f13' }}
+        style={{ maxWidth: '480px', padding: '64px 52px', background: '#09120f' }}
       >
-        {/* Breathing glow that tracks mouse */}
+        {/* Breathing emerald glow tracks mouse */}
         <motion.div
           className="absolute pointer-events-none"
           style={{
             top: '35%', left: '50%',
-            width: '480px', height: '480px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 70%)',
-            x: glowX,
-            y: glowY,
-            translateX: '-50%',
-            translateY: '-50%',
+            width: '520px', height: '520px', borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)',
+            x: glowX, y: glowY, translateX: '-50%', translateY: '-50%',
           }}
-          animate={{ scale: [1, 1.13, 1], opacity: [0.8, 1, 0.8] }}
-          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+          animate={{ scale: [1, 1.14, 1], opacity: [0.7, 1, 0.7] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         />
 
-        {/* Staggered content */}
         <motion.div variants={container} initial="hidden" animate="show">
 
-          {/* Logo */}
-          <motion.div variants={fadeUp} className="flex items-center gap-2.5 mb-14">
-            <motion.div
-              style={{
-                height: '36px', width: '36px', borderRadius: '10px',
-                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 24px rgba(79,70,229,0.35)',
-              }}
-              whileHover={{ scale: 1.08, boxShadow: '0 0 32px rgba(79,70,229,0.55)' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-            >
-              <span style={{ color: 'white', fontWeight: 700, fontSize: '17px', fontFamily: '"Space Grotesk", sans-serif' }}>
-                R
-              </span>
-            </motion.div>
-            <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 600, fontSize: '19px', color: '#e8e8f2', letterSpacing: '-0.025em' }}>
-              Rakiz
-            </span>
+          {/* Logo — mobile only */}
+          <motion.div variants={fadeUp} className="flex items-center gap-2.5 mb-14 lg:hidden">
+            <div style={{
+              height: '34px', width: '34px', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #047857, #10b981)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 22px rgba(16,185,129,0.35)',
+            }}>
+              <span style={{ color: 'white', fontWeight: 700, fontSize: '16px', fontFamily: '"Space Grotesk", sans-serif' }}>R</span>
+            </div>
+            <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 600, fontSize: '18px', color: '#d1fae5', letterSpacing: '-0.025em' }}>Rakiz</span>
           </motion.div>
 
-          {/* Headline block */}
+          {/* Headline */}
           <div className="mb-9">
             <motion.p
               variants={fadeUp}
-              style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6366f1', marginBottom: '10px' }}
+              style={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '10px', letterSpacing: '0.2em',
+                textTransform: 'uppercase', color: '#10b981', marginBottom: '10px',
+              }}
             >
               Secure access
             </motion.p>
             <motion.h1
               variants={headlineFade}
-              style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: '34px', fontWeight: 600, color: '#f0f0f8', letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0 }}
+              style={{
+                fontFamily: '"Space Grotesk", sans-serif',
+                fontSize: '36px', fontWeight: 700,
+                color: '#ecfdf5', letterSpacing: '-0.035em',
+                lineHeight: 1.08, margin: 0,
+              }}
             >
-              Sign in.
+              Welcome back.
             </motion.h1>
             <motion.p
               variants={fadeUp}
-              style={{ marginTop: '10px', fontSize: '14px', color: 'rgba(255,255,255,0.32)', fontFamily: '"Inter", sans-serif', lineHeight: 1.5 }}
+              style={{ marginTop: '10px', fontSize: '14px', color: 'rgba(236,253,245,0.3)', fontFamily: '"Inter", sans-serif', lineHeight: 1.5 }}
             >
               No account?{' '}
               <Link
                 to="/register"
-                style={{ color: '#818cf8', textDecoration: 'none' }}
+                style={{ color: '#34d399', textDecoration: 'none', transition: 'opacity 0.15s' }}
                 onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
                 onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
               >
@@ -403,24 +495,48 @@ export function LoginPage() {
               />
             </motion.div>
 
+            {/* Forgot password */}
+            <motion.div
+              className="flex justify-end"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.68 }}
+            >
+              <Link
+                to="/forgot-password"
+                style={{
+                  fontSize: '12px', fontFamily: '"Inter", sans-serif',
+                  color: 'rgba(52,211,153,0.5)', textDecoration: 'none',
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#34d399')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(52,211,153,0.5)')}
+              >
+                Forgot password?
+              </Link>
+            </motion.div>
+
+            {/* Submit */}
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.72, ease: 'easeOut' as const }}
+              transition={{ duration: 0.5, delay: 0.74, ease: 'easeOut' as const }}
             >
               <motion.button
                 type="submit"
                 disabled={loading}
                 className="flex items-center justify-center gap-2 mt-1 w-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 style={{
-                  height: '46px', borderRadius: '10px',
-                  background: loading ? 'rgba(79,70,229,0.7)' : 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                  height: '48px', borderRadius: '12px',
+                  background: loading
+                    ? 'rgba(16,185,129,0.45)'
+                    : 'linear-gradient(135deg, #047857 0%, #10b981 100%)',
                   color: 'white', fontSize: '15px',
                   fontFamily: '"Space Grotesk", sans-serif',
                   border: 'none', letterSpacing: '-0.01em',
-                  boxShadow: loading ? 'none' : '0 0 28px rgba(79,70,229,0.3)',
+                  boxShadow: loading ? 'none' : '0 0 32px rgba(16,185,129,0.28)',
                 }}
-                whileHover={loading ? {} : { scale: 1.02, boxShadow: '0 0 44px rgba(79,70,229,0.55)' }}
+                whileHover={loading ? {} : { scale: 1.02, boxShadow: '0 0 52px rgba(16,185,129,0.48)' }}
                 whileTap={loading ? {} : { scale: 0.97 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 20 }}
               >
@@ -431,9 +547,9 @@ export function LoginPage() {
                   </svg>
                 ) : (
                   <>
-                    Continue
+                    Sign in
                     <motion.span
-                      animate={{ x: [0, 3, 0] }}
+                      animate={{ x: [0, 4, 0] }}
                       transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
                     >
                       <ArrowRight className="h-4 w-4" />
@@ -449,36 +565,34 @@ export function LoginPage() {
             className="flex items-center gap-3 my-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.82 }}
+            transition={{ duration: 0.5, delay: 0.84 }}
           >
-            <div className="flex-1" style={{ height: '1px', background: 'rgba(255,255,255,0.07)' }} />
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.22)', fontFamily: '"Inter", sans-serif', letterSpacing: '0.05em' }}>
-              or
-            </span>
-            <div className="flex-1" style={{ height: '1px', background: 'rgba(255,255,255,0.07)' }} />
+            <div className="flex-1" style={{ height: '1px', background: 'rgba(16,185,129,0.1)' }} />
+            <span style={{ fontSize: '11px', color: 'rgba(236,253,245,0.2)', fontFamily: '"Inter", sans-serif', letterSpacing: '0.05em' }}>or</span>
+            <div className="flex-1" style={{ height: '1px', background: 'rgba(16,185,129,0.1)' }} />
           </motion.div>
 
-          {/* Google button */}
+          {/* Google */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.9 }}
+            transition={{ duration: 0.5, delay: 0.92 }}
           >
             <motion.button
               type="button"
               onClick={() => authApi.googleLogin()}
               className="flex items-center justify-center gap-2.5 w-full cursor-pointer"
               style={{
-                height: '46px', borderRadius: '10px',
-                border: '1px solid rgba(255,255,255,0.09)',
-                background: 'rgba(255,255,255,0.03)',
-                color: 'rgba(255,255,255,0.65)',
+                height: '48px', borderRadius: '12px',
+                border: '1px solid rgba(16,185,129,0.11)',
+                background: 'rgba(16,185,129,0.03)',
+                color: 'rgba(236,253,245,0.5)',
                 fontSize: '14px', fontFamily: '"Inter", sans-serif', fontWeight: 500,
               }}
               whileHover={{
-                background: 'rgba(255,255,255,0.07)',
-                borderColor: 'rgba(255,255,255,0.16)',
-                color: 'rgba(255,255,255,0.88)',
+                background: 'rgba(16,185,129,0.08)',
+                borderColor: 'rgba(16,185,129,0.22)',
+                color: 'rgba(236,253,245,0.85)',
               }}
               whileTap={{ scale: 0.98 }}
               transition={{ duration: 0.15 }}
