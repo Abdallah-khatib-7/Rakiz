@@ -54,7 +54,7 @@ app.use(morgan('dev'));
 app.use(cookieParser());
 
 app.use(passport.initialize());
-
+ 
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
