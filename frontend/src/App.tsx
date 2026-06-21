@@ -2,6 +2,7 @@ import Hero from './components/Hero'
 import WalletScene from './components/WalletScene'
 import SendScene from './components/SendScene'
 import SplitScene from './components/SplitScene'
+import TrustScene from './components/TrustScene'
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <WalletScene />
       <SendScene />
       <SplitScene />
+      <TrustScene />
     </>
   )
 }
