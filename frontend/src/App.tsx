@@ -1,23 +1,16 @@
-import Hero from './components/Hero'
-import WalletScene from './components/WalletScene'
-import GlobeScene from './components/GlobeScene'
-import SendScene from './components/SendScene'
-import SplitScene from './components/SplitScene'
-import TrustScene from './components/TrustScene'
-import CTAScene from './components/CTAScene'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import LandingPage from './pages/LandingPage'
+import LoginPage from './pages/LoginPage'
 
 function App() {
   return (
-    <>
+    <BrowserRouter>
       <div className="grain-overlay" />
-      <Hero />
-      <WalletScene />
-      <GlobeScene />
-      <SendScene />
-      <SplitScene />
-      <TrustScene />
-      <CTAScene />
-    </>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

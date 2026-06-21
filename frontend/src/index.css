@@ -58,7 +58,23 @@ body {
   from { transform: translateY(0); }
   to { transform: translateY(-100%); }
 }
-
+@theme {
+  --color-background: var(--color-void);
+  --color-foreground: var(--color-bone);
+  --color-primary: var(--color-emerald-bright);
+  --color-primary-foreground: var(--color-void);
+  --color-secondary: var(--color-surface);
+  --color-secondary-foreground: var(--color-bone);
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fff;
+  --color-muted: var(--color-surface);
+  --color-muted-foreground: var(--color-bone-dim);
+  --color-accent: var(--color-surface-raised);
+  --color-accent-foreground: var(--color-bone);
+  --color-border: var(--color-line);
+  --color-input: var(--color-line);
+  --color-ring: var(--color-emerald-bright);
+}
 .animate-marquee-vertical {
   animation: marquee-vertical var(--duration, 30s) linear infinite;
 }
