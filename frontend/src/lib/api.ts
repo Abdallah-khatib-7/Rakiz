@@ -17,8 +17,6 @@ export async function apiLogin(email: string, password: string) {
   return data as { accessToken: string; user: Record<string, unknown> }
 }
 
-
-
 export async function apiRegister(email: string, password: string, fullName: string) {
   const res = await fetch(`${API_URL}/api/auth/register`, {
     method: 'POST',
@@ -33,4 +31,73 @@ export async function apiRegister(email: string, password: string, fullName: str
   }
 
   return data as { message: string }
+}
+
+// every authenticated request goes through here — attaches the bearer token
+// and, if the access token has expired, transparently refreshes it once via
+// the httpOnly cookie before retrying, so callers never have to think about
+// token expiry themselves
+export async function apiFetch(path: string, accessToken: string | null, options: RequestInit = {}) {
+  const doFetch = (token: string | null) =>
+    fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+    })
+
+  let res = await doFetch(accessToken)
+
+  if (res.status === 401) {
+    const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+
+    if (refreshRes.ok) {
+      const refreshData = await refreshRes.json()
+      const { useAuthStore } = await import('@/store/authStore')
+      useAuthStore.getState().setAuth(refreshData.accessToken, refreshData.user)
+      res = await doFetch(refreshData.accessToken)
+    }
+  }
+
+  const data = await res.json()
+
+  if (!res.ok) {
+    throw new Error(data.error || 'Request failed')
+  }
+
+  return data
+}
+
+export async function apiGetWallets(accessToken: string | null) {
+  return apiFetch('/api/wallets', accessToken) as Promise<{
+    wallets: { id: number; currency: string; balance: string; is_locked: boolean }[]
+  }>
+}
+
+export async function apiGetTransactions(accessToken: string | null, limit = 5) {
+  return apiFetch(`/api/wallets/transactions?limit=${limit}`, accessToken) as Promise<{
+    transactions: {
+      id: number
+      amount: string
+      currency: string
+      direction: 'sent' | 'received'
+      sender_name: string
+      receiver_name: string
+      note: string | null
+      created_at: string
+    }[]
+  }>
+}
+
+export async function apiGetNotifications(accessToken: string | null, limit = 5) {
+  return apiFetch(`/api/notifications?limit=${limit}`, accessToken) as Promise<{
+    notifications: { id: number; title: string; body: string; is_read: boolean; created_at: string }[]
+    unreadCount: number
+  }>
 }
