@@ -3,7 +3,7 @@ import WalletScene from './components/WalletScene'
 import SendScene from './components/SendScene'
 import SplitScene from './components/SplitScene'
 import TrustScene from './components/TrustScene'
-
+import CTAScene from './components/CTAScene'
 function App() {
   return (
     <>
@@ -13,6 +13,7 @@ function App() {
       <SendScene />
       <SplitScene />
       <TrustScene />
+      <CTAScene />
     </>
   )
 }

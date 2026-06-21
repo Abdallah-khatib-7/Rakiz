@@ -54,7 +54,14 @@ body {
   70% { transform: translate(2%, -1%); }
   90% { transform: translate(-1%, 2%); }
 }
+@keyframes marquee-vertical {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
 
+.animate-marquee-vertical {
+  animation: marquee-vertical var(--duration, 30s) linear infinite;
+}
 .grain-overlay {
   position: fixed;
   inset: 0;
