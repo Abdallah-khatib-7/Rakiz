@@ -101,3 +101,39 @@ export async function apiGetNotifications(accessToken: string | null, limit = 5)
     unreadCount: number
   }>
 }
+
+export async function apiSendMoney(
+  accessToken: string | null,
+  params: { receiver_email: string; amount: number; currency: string; target_currency?: string; note?: string }
+) {
+  const idempotencyKey = `send-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return apiFetch('/api/wallets/send', accessToken, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({
+      receiver_email: params.receiver_email,
+      amount: params.amount,
+      currency: params.currency,
+      target_currency: params.target_currency,
+      note: params.note,
+    }),
+  }) as Promise<{ transaction: Record<string, unknown> }>
+}
+
+export async function apiGetAllTransactions(accessToken: string | null, page = 1, limit = 20) {
+  return apiFetch(`/api/wallets/transactions?page=${page}&limit=${limit}`, accessToken) as Promise<{
+    transactions: {
+      id: number
+      amount: string
+      currency: string
+      converted_amount: string | null
+      converted_currency: string | null
+      direction: 'sent' | 'received'
+      sender_name: string
+      receiver_name: string
+      note: string | null
+      created_at: string
+    }[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>
+}

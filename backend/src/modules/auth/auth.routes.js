@@ -19,6 +19,7 @@ const schemas = {
       email: Joi.string().email().lowercase().max(255).required(),
       password: Joi.string().min(8).max(128).required(),
       full_name: Joi.string().trim().min(2).max(255).required(),
+      phone: Joi.string().trim().pattern(/^\+?[1-9]\d{6,18}$/).optional().allow(''),
     }),
   },
   login: {
@@ -54,8 +55,6 @@ router.post('/logout', controller.logout);
 
 router.get('/me', requireAuth, controller.me);
 
-// Google OAuth. Stateless: no server session, the strategy just normalizes the
-// profile and we issue our own tokens in the callback.
 router.get(
   '/google',
   passport.authenticate('google', { scope: ['profile', 'email'], session: false })

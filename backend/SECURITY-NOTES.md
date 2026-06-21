@@ -32,3 +32,28 @@
       tuning connection pools, indexes, or cache TTLs further.
 - [ ] Database index audit based on real slow-query logs once load testing
       reveals what's actually slow.
+
+
+## Deliberately deferred: SMS-verified phone number sending
+- Backend support exists: users table has an optional `phone` column,
+  registration accepts it, and wallet.service.js's send() can already look
+  up a recipient by phone OR email (receiver_identifier field).
+- NOT exposed as a trusted send method yet, because phone numbers are
+  currently unverified — anyone could type any digits at registration with
+  no proof they control that number. Sending money to an unverified phone
+  number would be a real trust gap, the same category of risk we've avoided
+  everywhere else in this build.
+- Real fix is SMS OTP verification (Twilio Verify or similar), same pattern
+  as our existing email verification flow. Researched and scoped:
+  - Twilio free trial only allows messaging pre-approved numbers — cannot
+    serve arbitrary new users, so it doesn't solve the actual problem.
+  - Real usage costs ~$0.05/verification via Twilio Verify, or ~$0.008/SMS
+    sending it manually — genuine per-user cost, no viable free tier.
+  - This is a known, scoped, deliberate deferral, not an oversight. The
+    OTP flow itself (generate code, expire after N minutes, rate-limit
+    attempts, confirm-then-mark-verified) is the same shape as
+    auth.service.js's existing email verification, just swapping the
+    delivery channel and adding cost-awareness to the rate limiting.
+- To ship this later: add Twilio account + Verify service, a
+  `phone_verified` boolean column, a verify-phone endpoint, and gate
+  send-by-phone in wallet.service.js behind that flag.

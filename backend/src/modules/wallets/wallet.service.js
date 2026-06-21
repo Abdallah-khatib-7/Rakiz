@@ -20,7 +20,7 @@ const getWallet = async (db, userId, currency) => {
   return getOrCreateWallet(db, userId, currency);
 };
 
-const send = async (db, senderId, { idempotencyKey, receiverEmail, amount, currency, targetCurrency, note }, req) => {
+const send = async (db, senderId, { idempotencyKey, receiverIdentifier, amount, currency, targetCurrency, note }, req) => {
   if (!SUPPORTED.includes(currency)) {
     throw Object.assign(new Error(`Unsupported currency: ${currency}`), { status: 422 });
   }
@@ -33,12 +33,23 @@ const send = async (db, senderId, { idempotencyKey, receiverEmail, amount, curre
     throw Object.assign(new Error('Idempotency key is required'), { status: 422 });
   }
 
+  if (!receiverIdentifier) {
+    throw Object.assign(new Error('Recipient email or phone number is required'), { status: 422 });
+  }
+
   const { duplicate, result } = await check(idempotencyKey);
   if (duplicate) return result;
 
+  // a phone-like identifier is digits with an optional leading + and no @,
+  // since real emails never look like that — this lets one field accept
+  // either without the caller needing to specify which kind it sent
+  const looksLikePhone = /^\+?[0-9\s-]{6,20}$/.test(receiverIdentifier);
+
   const [rows] = await db.query(
-    'SELECT id, status FROM users WHERE email = ? LIMIT 1',
-    [receiverEmail]
+    looksLikePhone
+      ? 'SELECT id, status FROM users WHERE phone = ? LIMIT 1'
+      : 'SELECT id, status FROM users WHERE email = ? LIMIT 1',
+    [receiverIdentifier]
   );
   const receiver = rows[0];
 

@@ -8,14 +8,13 @@ const { apiLimiter } = require('../../middleware/rateLimiter');
 
 const router = express.Router();
 
-// all wallet routes require authentication
 router.use(requireAuth);
 router.use(apiLimiter);
 
 const schemas = {
   send: {
     body: Joi.object({
-      receiver_email: Joi.string().email().lowercase().max(255).required(),
+      receiver_identifier: Joi.string().trim().max(255).required(),
       amount: Joi.number().positive().precision(8).required(),
       currency: Joi.string().valid('USD', 'EUR', 'LBP', 'SAR', 'AED', 'GBP').required(),
       target_currency: Joi.string().valid('USD', 'EUR', 'LBP', 'SAR', 'AED', 'GBP').optional(),

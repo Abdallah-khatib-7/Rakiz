@@ -11,10 +11,8 @@ const auditService = require('../../services/audit.service');
 const { encrypt, decrypt } = require('../../utils/encryption');
 
 const BCRYPT_COST = 12;
-const MIN_PASSWORD_SCORE = 2; // zxcvbn 0-4; below this is trivially guessable
+const MIN_PASSWORD_SCORE = 2;
 
-// Small helper so the service can signal HTTP semantics without knowing about
-// Express. The controller reads err.status.
 const httpError = (status, message) => {
   const err = new Error(message);
   err.status = status;
@@ -24,6 +22,7 @@ const httpError = (status, message) => {
 const publicUser = (u) => ({
   id: u.id,
   email: u.email,
+  phone: u.phone || null,
   full_name: u.full_name,
   avatar_url: u.avatar_url,
   role: u.role,
@@ -32,11 +31,6 @@ const publicUser = (u) => ({
   email_verified: !!u.email_verified,
 });
 
-// Creates a fresh session row and returns the raw refresh token. The raw token
-// only ever lives in the response cookie; the DB keeps its hash. Passing a
-// familyId reuses an existing family (rotation); omit it to start a new one.
-// ip_address is stored encrypted — it's PII and this table is otherwise just
-// session bookkeeping, no reason to keep it in the clear at rest.
 const createSession = async (db, userId, req, familyId = null) => {
   const refreshToken = tokens.generateRefreshToken();
   const family = familyId || uuidv4();
@@ -60,13 +54,23 @@ const createSession = async (db, userId, req, familyId = null) => {
   return { refreshToken, familyId: family };
 };
 
-const register = async (db, { email, password, full_name }, req) => {
+const register = async (db, { email, password, full_name, phone }, req) => {
   const [existing] = await db.query(
     'SELECT id FROM users WHERE email = ? LIMIT 1',
     [email]
   );
   if (existing.length) {
     throw httpError(409, 'An account with this email already exists');
+  }
+
+  if (phone) {
+    const [existingPhone] = await db.query(
+      'SELECT id FROM users WHERE phone = ? LIMIT 1',
+      [phone]
+    );
+    if (existingPhone.length) {
+      throw httpError(409, 'An account with this phone number already exists');
+    }
   }
 
   const strength = zxcvbn(password, [email, full_name]);
@@ -80,16 +84,14 @@ const register = async (db, { email, password, full_name }, req) => {
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
 
   const [result] = await db.query(
-    `INSERT INTO users (email, password_hash, full_name, email_verified)
-     VALUES (?, ?, ?, FALSE)`,
-    [email, passwordHash, full_name]
+    `INSERT INTO users (email, phone, password_hash, full_name, email_verified)
+     VALUES (?, ?, ?, ?, FALSE)`,
+    [email, phone || null, passwordHash, full_name]
   );
 
   const userId = result.insertId;
   const verifyToken = tokens.signEmailToken(userId);
 
-  // Don't let a flaky email provider fail the whole registration; the user can
-  // request another verification link.
   try {
     await sendVerificationEmail({ to: email, name: full_name, token: verifyToken });
   } catch (err) {
@@ -140,8 +142,6 @@ const verifyEmail = async (db, token) => {
 };
 
 const login = async (db, { email, password }, req) => {
-  // Locked out from too many recent failed attempts on this email — reject
-  // before even touching the DB or comparing a password.
   const lockedOut = await fraudService.isLockedOut(email);
   if (lockedOut) {
     throw httpError(429, 'Too many failed attempts. Try again in a few minutes.');
@@ -157,9 +157,6 @@ const login = async (db, { email, password }, req) => {
   );
   const user = rows[0];
 
-  // Same response whether the email is unknown or the password is wrong, so we
-  // don't leak which emails have accounts. Still run a hash compare to keep the
-  // timing roughly constant.
   const dummyHash = '$2b$12$0000000000000000000000000000000000000000000000000000';
   const ok = await bcrypt.compare(password, user?.password_hash || dummyHash);
 
@@ -183,15 +180,10 @@ const login = async (db, { email, password }, req) => {
     throw httpError(403, `Your account is ${user.status}`);
   }
 
-  // password was correct — clear any accumulated failed attempts
   await fraudService.clearFailedLogins(email);
 
   const currentIp = getClientIp(req);
 
-  // last_login_ip is stored encrypted; decrypt before comparing so the fraud
-  // check works against plaintext on both sides. A null/garbled stored value
-  // decrypts to null rather than throwing, so older or pre-encryption rows
-  // degrade gracefully instead of breaking login.
   let previousIp = null;
   try {
     previousIp = user.last_login_ip ? decrypt(user.last_login_ip) : null;
@@ -252,8 +244,6 @@ const refresh = async (db, rawToken, req) => {
     throw httpError(401, 'Invalid session');
   }
 
-  // A revoked token being presented again means it was already rotated out and
-  // is now being replayed. Treat it as a compromise and kill the whole family.
   if (session.is_revoked) {
     await db.query(
       'UPDATE user_sessions SET is_revoked = TRUE WHERE family_id = ?',
@@ -277,7 +267,6 @@ const refresh = async (db, rawToken, req) => {
     throw httpError(401, 'Account is not active');
   }
 
-  // Rotate: retire the presented token, mint a new one in the same family.
   await db.query('UPDATE user_sessions SET is_revoked = TRUE WHERE id = ?', [
     session.id,
   ]);
@@ -295,8 +284,6 @@ const logout = async (db, rawToken) => {
   );
 };
 
-// Find-or-link a user coming back from Google. The passport strategy hands us a
-// normalized profile; we reconcile it with any existing local account by email.
 const googleUpsert = async (db, profile, req) => {
   const [rows] = await db.query(
     'SELECT * FROM users WHERE google_id = ? OR email = ? LIMIT 1',
@@ -315,8 +302,6 @@ const googleUpsert = async (db, profile, req) => {
     ]);
     user = created[0];
   } else if (!user.google_id) {
-    // Existing local account signing in with Google for the first time: link
-    // the accounts and trust Google's verified email.
     await db.query(
       'UPDATE users SET google_id = ?, email_verified = TRUE WHERE id = ?',
       [profile.google_id, user.id]
