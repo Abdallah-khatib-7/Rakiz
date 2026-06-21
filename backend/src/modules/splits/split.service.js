@@ -187,27 +187,42 @@ const settleMember = async (db, splitId, userId, { currency, idempotencyKey }, r
   if (!split) throw httpError(404, 'Split not found');
   if (split.status !== 'open') throw httpError(409, 'Split is no longer open');
 
-  // member pays the split creator
-  const iKey = idempotencyKey || uuidv4();
-  const { duplicate, result: cachedResult } = await check(iKey);
-  if (duplicate) return cachedResult;
+  // The creator's own share never needs a real transfer — they'd just be
+  // paying themselves, which produces a meaningless ledger entry with no
+  // actual change in funds. We skip straight to marking it settled.
+  const isCreatorSettlingOwnShare = userId === split.created_by;
 
-  const txResult = await transfer(db, {
-    idempotencyKey: iKey,
-    senderId: userId,
-    receiverId: split.created_by,
-    amount: parseFloat(member.share_amount),
-    currency,
-    targetCurrency: split.currency,
-    note: `Split settlement: ${split.title}`,
-    type: 'split_settle',
-    auditEventType: 'split.settled',
-  }, req);
+  let txResult = null;
 
-  await db.query(
-    'UPDATE split_members SET is_settled = TRUE, settled_at = NOW() WHERE split_id = ? AND user_id = ?',
-    [splitId, userId]
-  );
+  if (isCreatorSettlingOwnShare) {
+    await db.query(
+      'UPDATE split_members SET is_settled = TRUE, settled_at = NOW() WHERE split_id = ? AND user_id = ?',
+      [splitId, userId]
+    );
+  } else {
+    const iKey = idempotencyKey || uuidv4();
+    const { duplicate, result: cachedResult } = await check(iKey);
+    if (duplicate) return cachedResult;
+
+    txResult = await transfer(db, {
+      idempotencyKey: iKey,
+      senderId: userId,
+      receiverId: split.created_by,
+      amount: parseFloat(member.share_amount),
+      currency,
+      targetCurrency: split.currency,
+      note: `Split settlement: ${split.title}`,
+      type: 'split_settle',
+      auditEventType: 'split.settled',
+    }, req);
+
+    await db.query(
+      'UPDATE split_members SET is_settled = TRUE, settled_at = NOW() WHERE split_id = ? AND user_id = ?',
+      [splitId, userId]
+    );
+
+    await save(iKey, txResult);
+  }
 
   // check if all members settled — if so, close the split
   const [unsettled] = await db.query(
@@ -223,8 +238,6 @@ const settleMember = async (db, splitId, userId, { currency, idempotencyKey }, r
       ['settled', splitId]
     );
   }
-
-  await save(iKey, txResult);
 
   // Notify every member of the split that something changed, not just the
   // creator — anyone watching this split's progress should see it update live.
@@ -255,30 +268,34 @@ const settleMember = async (db, splitId, userId, { currency, idempotencyKey }, r
   // The creator gets a persisted notification, separate from the live emit
   // above — the member who just paid already knows they paid, this is for
   // the person collecting. If settling closes the whole split, say that
-  // instead of just "someone paid their share".
-  try {
-    const [[settlerInfo]] = await db.query(
-      'SELECT full_name FROM users WHERE id = ? LIMIT 1',
-      [userId]
-    );
+  // instead of just "someone paid their share". Skip this notification
+  // entirely when the creator settled their own share — they don't need to
+  // be told they paid themselves.
+  if (!isCreatorSettlingOwnShare) {
+    try {
+      const [[settlerInfo]] = await db.query(
+        'SELECT full_name FROM users WHERE id = ? LIMIT 1',
+        [userId]
+      );
 
-    const body = newStatus === 'settled'
-      ? `${settlerInfo?.full_name || 'A member'} settled their share, completing "${split.title}"`
-      : `${settlerInfo?.full_name || 'A member'} settled their share of "${split.title}"`;
+      const body = newStatus === 'settled'
+        ? `${settlerInfo?.full_name || 'A member'} settled their share, completing "${split.title}"`
+        : `${settlerInfo?.full_name || 'A member'} settled their share of "${split.title}"`;
 
-    await createNotification(db, {
-      userId: split.created_by,
-      type: 'split_settled',
-      title: newStatus === 'settled' ? 'Split fully settled' : 'Split share settled',
-      body,
-      referenceId: splitId,
-      referenceType: 'split',
-    });
-  } catch (err) {
-    console.error(`Split notification failed for split ${splitId}: ${err.message}`);
+      await createNotification(db, {
+        userId: split.created_by,
+        type: 'split_settled',
+        title: newStatus === 'settled' ? 'Split fully settled' : 'Split share settled',
+        body,
+        referenceId: splitId,
+        referenceType: 'split',
+      });
+    } catch (err) {
+      console.error(`Split notification failed for split ${splitId}: ${err.message}`);
+    }
   }
 
-  return txResult;
+  return txResult || { message: 'Settled — no transfer needed for your own share' };
 };
 
 module.exports = { createSplit, getSplit, getUserSplits, settleMember };

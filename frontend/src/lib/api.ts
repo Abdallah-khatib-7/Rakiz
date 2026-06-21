@@ -146,3 +146,73 @@ export async function apiGetAllTransactions(accessToken: string | null, page = 1
     pagination: { page: number; limit: number; total: number; pages: number }
   }>
 }
+
+
+export async function apiCreateSplit(
+  accessToken: string | null,
+  params: {
+    title: string
+    total_amount: number
+    currency: string
+    split_type: 'equal' | 'custom' | 'percentage'
+    members: { email: string; amount?: number; percentage?: number }[]
+  }
+) {
+  return apiFetch('/api/splits', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }) as Promise<{ split: Record<string, unknown> }>
+}
+
+export async function apiGetSplits(accessToken: string | null, page = 1, limit = 20) {
+  return apiFetch(`/api/splits?page=${page}&limit=${limit}`, accessToken) as Promise<{
+    splits: {
+      id: number
+      created_by: number
+      title: string
+      total_amount: string
+      currency: string
+      split_type: string
+      status: string
+      creator_name: string
+      created_at: string
+    }[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>
+}
+
+export async function apiGetSplit(accessToken: string | null, id: number) {
+  return apiFetch(`/api/splits/${id}`, accessToken) as Promise<{
+    split: {
+      id: number
+      created_by: number
+      title: string
+      total_amount: string
+      currency: string
+      split_type: string
+      status: string
+      creator_name: string
+      creator_email: string
+      created_at: string
+      settled_at: string | null
+      members: {
+        id: number
+        user_id: number
+        share_amount: string
+        share_percentage: string | null
+        is_settled: boolean
+        full_name: string
+        email: string
+      }[]
+    }
+  }>
+}
+
+export async function apiSettleSplit(accessToken: string | null, splitId: number, currency: string) {
+  const idempotencyKey = `settle-${splitId}-${Date.now()}`
+  return apiFetch(`/api/splits/${splitId}/settle`, accessToken, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ currency }),
+  }) as Promise<{ transaction: Record<string, unknown> }>
+}

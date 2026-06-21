@@ -6,6 +6,7 @@ import AuthCallback from './pages/AuthCallback'
 import DashboardPage from './pages/DashboardPage'
 import AppLayout from './components/AppLayout'
 import WalletPage from './pages/WalletPage'
+import SplitsPage from './pages/SplitsPage'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/splits" element={<SplitsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
