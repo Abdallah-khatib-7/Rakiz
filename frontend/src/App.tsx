@@ -1,5 +1,7 @@
 import Hero from './components/Hero'
 import WalletScene from './components/WalletScene'
+import SendScene from './components/SendScene'
+import SplitScene from './components/SplitScene'
 
 function App() {
   return (
@@ -7,6 +9,8 @@ function App() {
       <div className="grain-overlay" />
       <Hero />
       <WalletScene />
+      <SendScene />
+      <SplitScene />
     </>
   )
 }
