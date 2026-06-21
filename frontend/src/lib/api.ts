@@ -62,6 +62,15 @@ export async function apiFetch(path: string, accessToken: string | null, options
       const { useAuthStore } = await import('@/store/authStore')
       useAuthStore.getState().setAuth(refreshData.accessToken, refreshData.user)
       res = await doFetch(refreshData.accessToken)
+    } else {
+      // refresh token itself is invalid/expired — there's no way to recover
+      // without the user logging in again, so clear local state and send
+      // them there directly instead of leaving the app in a broken,
+      // half-authenticated state with confusing 401s everywhere
+      const { useAuthStore } = await import('@/store/authStore')
+      useAuthStore.getState().clearAuth()
+      window.location.href = '/login?session=expired'
+      throw new Error('Session expired')
     }
   }
 
@@ -104,14 +113,14 @@ export async function apiGetNotifications(accessToken: string | null, limit = 5)
 
 export async function apiSendMoney(
   accessToken: string | null,
-  params: { receiver_email: string; amount: number; currency: string; target_currency?: string; note?: string }
+  params: { receiver_identifier: string; amount: number; currency: string; target_currency?: string; note?: string }
 ) {
   const idempotencyKey = `send-${Date.now()}-${Math.random().toString(36).slice(2)}`
   return apiFetch('/api/wallets/send', accessToken, {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify({
-      receiver_email: params.receiver_email,
+      receiver_identifier: params.receiver_identifier,
       amount: params.amount,
       currency: params.currency,
       target_currency: params.target_currency,
