@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import AppLayout from './components/AppLayout'
 import WalletPage from './pages/WalletPage'
 import SplitsPage from './pages/SplitsPage'
+import RequestsPage from './pages/RequestsPage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/splits" element={<SplitsPage />} />
+          <Route path="/requests" element={<RequestsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

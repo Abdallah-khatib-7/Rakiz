@@ -216,3 +216,52 @@ export async function apiSettleSplit(accessToken: string | null, splitId: number
     body: JSON.stringify({ currency }),
   }) as Promise<{ transaction: Record<string, unknown> }>
 }
+
+
+export async function apiCreateRequest(
+  accessToken: string | null,
+  params: { target_email: string; amount: number; currency: string; note?: string }
+) {
+  return apiFetch('/api/requests', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }) as Promise<{ request: Record<string, unknown> }>
+}
+
+export async function apiGetRequests(accessToken: string | null, type: 'all' | 'sent' | 'received' = 'all') {
+  return apiFetch(`/api/requests?type=${type}&limit=30`, accessToken) as Promise<{
+    requests: {
+      id: number
+      requester_id: number
+      target_id: number
+      amount: string
+      currency: string
+      note: string | null
+      status: string
+      expires_at: string
+      created_at: string
+      requester_name: string
+      requester_email: string
+      target_name: string
+      target_email: string
+    }[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>
+}
+
+export async function apiPayRequest(accessToken: string | null, id: number, currency: string) {
+  const idempotencyKey = `pay-request-${id}-${Date.now()}`
+  return apiFetch(`/api/requests/${id}/pay`, accessToken, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ currency }),
+  }) as Promise<{ transaction: Record<string, unknown> }>
+}
+
+export async function apiDeclineRequest(accessToken: string | null, id: number) {
+  return apiFetch(`/api/requests/${id}/decline`, accessToken, { method: 'POST' })
+}
+
+export async function apiCancelRequest(accessToken: string | null, id: number) {
+  return apiFetch(`/api/requests/${id}/cancel`, accessToken, { method: 'POST' })
+}
