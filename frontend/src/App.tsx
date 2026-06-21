@@ -8,6 +8,10 @@ import AppLayout from './components/AppLayout'
 import WalletPage from './pages/WalletPage'
 import SplitsPage from './pages/SplitsPage'
 import RequestsPage from './pages/RequestsPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import TermsOfServicePage from './pages/TermsOfServicePage'
+import ContactPage from './pages/ContactPage'
+
 
 function App() {
   return (
@@ -18,6 +22,9 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} /><Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/contact" element={<ContactPage />} />
 
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />

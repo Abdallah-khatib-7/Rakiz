@@ -63,9 +63,9 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-20 flex items-center gap-8 text-sm text-white/60">
-          <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-          <a href="#" className="hover:text-white transition-colors">Contact</a>
+          <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+<a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+<a href="/contact" className="hover:text-white transition-colors">Contact</a>
         </div>
       </div>
 
