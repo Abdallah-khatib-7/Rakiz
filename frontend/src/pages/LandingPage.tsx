@@ -6,6 +6,7 @@ import SplitScene from '../components/SplitScene'
 import TrustScene from '../components/TrustScene'
 import PricingScene from '../components/PricingScene'
 import CTAScene from '../components/CTAScene'
+import CinematicFooter from '../components/CinematicFooter'
 
 export default function LandingPage() {
   return (
@@ -18,6 +19,7 @@ export default function LandingPage() {
       <TrustScene />
       <PricingScene />
       <CTAScene />
+      <CinematicFooter />
     </>
   )
 }
