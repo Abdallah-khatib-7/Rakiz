@@ -16,36 +16,40 @@ import BillingPage from './pages/BillingPage'
 import LinksPage from './pages/LinksPage'
 import PayLinkPage from './pages/PayLinkPage.tsx'
 import AIPage from './pages/AIPage.tsx'
-
+import NotificationsPage from './pages/NotificationsPage'
+import { SocketProvider } from './context/SocketContext'
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="grain-overlay" />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-        <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route path="/terms" element={<TermsOfServicePage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/pay/:token" element={<PayLinkPage />} />
+    <SocketProvider>
+      <BrowserRouter>
+        <div className="grain-overlay" />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/pay/:token" element={<PayLinkPage />} />
 
-        <Route element={<RequireAuth />}>
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/wallet" element={<WalletPage />} />
-            <Route path="/splits" element={<SplitsPage />} />
-            <Route path="/requests" element={<RequestsPage />} />
-            <Route path="/billing" element={<BillingPage />} />
-            <Route path="/links" element={<LinksPage />} />
-            <Route path="/ai" element={<AIPage />} />
+          <Route element={<RequireAuth />}>
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/wallet" element={<WalletPage />} />
+              <Route path="/splits" element={<SplitsPage />} />
+              <Route path="/requests" element={<RequestsPage />} />
+              <Route path="/billing" element={<BillingPage />} />
+              <Route path="/links" element={<LinksPage />} />
+              <Route path="/ai" element={<AIPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </SocketProvider>
   )
 }
 

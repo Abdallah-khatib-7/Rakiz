@@ -104,11 +104,29 @@ export async function apiGetTransactions(accessToken: string | null, limit = 5) 
   }>
 }
 
-export async function apiGetNotifications(accessToken: string | null, limit = 5) {
-  return apiFetch(`/api/notifications?limit=${limit}`, accessToken) as Promise<{
-    notifications: { id: number; title: string; body: string; is_read: boolean; created_at: string }[]
+export async function apiGetNotifications(accessToken: string | null, page = 1, limit = 30, unreadOnly = false) {
+  return apiFetch(`/api/notifications?page=${page}&limit=${limit}&unread_only=${unreadOnly}`, accessToken) as Promise<{
+    notifications: {
+      id: number
+      type: string
+      title: string
+      body: string | null
+      is_read: boolean
+      reference_id: number | null
+      reference_type: string | null
+      created_at: string
+    }[]
     unreadCount: number
+    pagination: { page: number; limit: number; total: number; pages: number }
   }>
+}
+
+export async function apiMarkNotificationRead(accessToken: string | null, id: number) {
+  return apiFetch(`/api/notifications/${id}/read`, accessToken, { method: 'PATCH' })
+}
+
+export async function apiMarkAllNotificationsRead(accessToken: string | null) {
+  return apiFetch('/api/notifications/read-all', accessToken, { method: 'PATCH' })
 }
 
 export async function apiSendMoney(

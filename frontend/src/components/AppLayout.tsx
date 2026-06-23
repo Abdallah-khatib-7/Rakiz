@@ -1,6 +1,9 @@
+import { useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { Send, Users, Inbox, Link2, Sparkles, Bell, LogOut } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useSocket } from '@/context/SocketContext'
+import { apiGetNotifications } from '@/lib/api'
 
 const NAV_ITEMS = [
   { to: '/wallet', label: 'Wallet', icon: Send },
@@ -13,7 +16,14 @@ const NAV_ITEMS = [
 export default function AppLayout() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
+  const accessToken = useAuthStore((s) => s.accessToken)
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const { unreadCount, setUnreadCount } = useSocket()
+
+  useEffect(() => {
+    apiGetNotifications(accessToken, 1, 1, true).then((res) => setUnreadCount(res.unreadCount))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken])
 
   const handleLogout = () => {
     clearAuth()
@@ -44,8 +54,13 @@ export default function AppLayout() {
         </nav>
 
         <div className="flex items-center gap-5">
-          <NavLink to="/notifications" className="text-[var(--color-bone-dim)] hover:text-[var(--color-bone)] transition-colors">
+          <NavLink to="/notifications" className="relative text-[var(--color-bone-dim)] hover:text-[var(--color-bone)] transition-colors">
             <Bell className="size-[18px]" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-[var(--color-emerald-bright)] text-[var(--color-void)] text-[9px] font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </NavLink>
           <NavLink to="/profile" className="font-mono text-xs text-[var(--color-bone-dim)] hover:text-[var(--color-bone)] transition-colors">
             {user?.full_name?.split(' ')[0] || 'Account'}

@@ -79,10 +79,8 @@ export default function Hero() {
 
       <div className="relative z-10 flex flex-col items-start text-left pt-32 sm:pt-36 md:pt-40 px-6 sm:px-10 md:px-16 max-w-3xl">
         <div className="flex items-center gap-2 mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#00D27A] animate-pulse" />
-          <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#00D27A]">
-            Built on trust
-          </span>
+          
+          
         </div>
         <h1 className="font-bold leading-[0.92] text-white text-5xl sm:text-6xl md:text-7xl lg:text-8xl" style={{ fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '-0.03em' }}>
           Money moves.
