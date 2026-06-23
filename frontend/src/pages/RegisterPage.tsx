@@ -38,7 +38,7 @@ export default function RegisterPage() {
       <div className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-[var(--color-emerald)]/90 via-[var(--color-emerald)] to-[var(--color-emerald)]/70 p-12">
         <div className="relative z-20 flex items-center gap-4">
           <a
-            href="/dashboard"
+            href="/"
             aria-label="Back to dashboard"
             className="flex items-center justify-center size-8 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
           >

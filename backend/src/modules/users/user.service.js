@@ -1,4 +1,5 @@
 const { uploadImage, deleteImage } = require('../../services/storage.service');
+const tierLimits = require('../../services/tierLimits.service');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
@@ -27,9 +28,6 @@ const updateAvatar = async (db, userId, file) => {
 
   await db.query('UPDATE users SET avatar_url = ? WHERE id = ?', [url, userId]);
 
-  // clean up the old file now that the new one is confirmed saved in the DB —
-  // doing this after the DB write means a failed delete never leaves the user
-  // without a working avatar_url
   const previousKey = extractKeyFromUrl(previousUrl);
   if (previousKey) {
     await deleteImage(previousKey);
@@ -38,4 +36,23 @@ const updateAvatar = async (db, userId, file) => {
   return { avatar_url: url };
 };
 
-module.exports = { updateAvatar };
+const getUsage = async (db, user) => {
+  const limits = tierLimits.TIER_LIMITS[user.subscription_tier] || tierLimits.TIER_LIMITS.free;
+
+  const sendsUsed = await tierLimits.getMonthlySendCount(db, user.id);
+  const splitsUsed = await tierLimits.getMonthlySplitCount(db, user.id);
+
+  return {
+    tier: user.subscription_tier,
+    sends: {
+      used: sendsUsed,
+      limit: limits.sendsPerMonth === Infinity ? null : limits.sendsPerMonth,
+    },
+    splits: {
+      used: splitsUsed,
+      limit: limits.splitsPerMonth === Infinity ? null : limits.splitsPerMonth,
+    },
+  };
+};
+
+module.exports = { updateAvatar, getUsage };

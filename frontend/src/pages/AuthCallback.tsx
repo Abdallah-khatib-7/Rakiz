@@ -1,14 +1,17 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 
 export default function AuthCallback() {
+  const navigate = useNavigate()
+
   useEffect(() => {
     const hash = window.location.hash.replace('#', '')
     const params = new URLSearchParams(hash)
     const accessToken = params.get('access_token')
 
     if (!accessToken) {
-      window.location.href = '/login?oauth=failed'
+      navigate('/login?oauth=failed')
       return
     }
 
@@ -21,11 +24,12 @@ export default function AuthCallback() {
       .then((res) => res.json())
       .then((data) => {
         useAuthStore.getState().setAuth(accessToken, data.user)
-        window.location.href = '/dashboard'
+        navigate('/dashboard')
       })
       .catch(() => {
-        window.location.href = '/login?oauth=failed'
+        navigate('/login?oauth=failed')
       })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

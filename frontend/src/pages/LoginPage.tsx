@@ -8,6 +8,7 @@ import { CharacterScene } from '@/components/CharacterScene'
 import { useCharacterAnimation } from '@/hooks/useCharacterAnimation'
 import { apiLogin } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { useNavigate } from 'react-router-dom'
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -16,7 +17,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
-
+  const navigate = useNavigate()
   const anim = useCharacterAnimation(password, showPassword, isTyping)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +27,8 @@ export default function LoginPage() {
     try {
       const { accessToken, user } = await apiLogin(email, password)
       useAuthStore.getState().setAuth(accessToken, user as never)
-      window.location.href = '/dashboard'
+      navigate('/dashboard')
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -39,7 +41,7 @@ export default function LoginPage() {
       <div className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-[var(--color-emerald)]/90 via-[var(--color-emerald)] to-[var(--color-emerald)]/70 p-12">
         <div className="relative z-20 flex items-center gap-4">
           <a
-            href="/dashboard"
+            href="/"
             aria-label="Back to dashboard"
             className="flex items-center justify-center size-8 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
           >

@@ -9,8 +9,8 @@ const router = express.Router();
 router.use(requireAuth);
 router.use(apiLimiter);
 
-// multer runs inside the controller itself (it needs to parse the multipart
-// body before validation would even make sense), so no Joi schema here.
 router.post('/avatar', controller.updateAvatar);
+
+router.get('/usage', controller.getUsage);
 
 module.exports = router;

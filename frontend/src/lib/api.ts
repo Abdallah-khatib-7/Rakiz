@@ -265,3 +265,25 @@ export async function apiDeclineRequest(accessToken: string | null, id: number) 
 export async function apiCancelRequest(accessToken: string | null, id: number) {
   return apiFetch(`/api/requests/${id}/cancel`, accessToken, { method: 'POST' })
 }
+
+
+export async function apiCreateCheckout(accessToken: string | null, tier: 'pro' | 'business') {
+  return apiFetch('/api/subscriptions/checkout', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ tier }),
+  }) as Promise<{ url: string }>
+}
+
+export async function apiCreatePortalSession(accessToken: string | null) {
+  return apiFetch('/api/subscriptions/portal', accessToken, {
+    method: 'POST',
+  }) as Promise<{ url: string }>
+}
+
+export async function apiGetUsage(accessToken: string | null) {
+  return apiFetch('/api/users/usage', accessToken) as Promise<{
+    tier: string
+    sends: { used: number; limit: number | null }
+    splits: { used: number; limit: number | null }
+  }>
+}
