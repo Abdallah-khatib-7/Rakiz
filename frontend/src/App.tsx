@@ -15,6 +15,7 @@ import ContactPage from './pages/ContactPage'
 import BillingPage from './pages/BillingPage'
 import LinksPage from './pages/LinksPage'
 import PayLinkPage from './pages/PayLinkPage.tsx'
+import AIPage from './pages/AIPage.tsx'
 
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
             <Route path="/requests" element={<RequestsPage />} />
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/links" element={<LinksPage />} />
+            <Route path="/ai" element={<AIPage />} />
           </Route>
         </Route>
       </Routes>

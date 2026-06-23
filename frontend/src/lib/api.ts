@@ -347,3 +347,59 @@ export async function apiPayLinkByToken(accessToken: string | null, token: strin
     body: JSON.stringify({ amount, currency }),
   }) as Promise<{ transaction: Record<string, unknown> }>
 }
+
+export async function apiGenerateInsight(accessToken: string | null, month: string) {
+  return apiFetch('/api/ai/insights/generate', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ month }),
+  }) as Promise<{
+    insight: {
+      month: string
+      total_sent: number
+      total_received: number
+      top_categories: string[]
+      savings_suggestions: string[]
+      summary_text: string
+      anomalies_detected?: { description: string; reasoning: string }[]
+    }
+  }>
+}
+
+export async function apiGetInsight(accessToken: string | null, month: string) {
+  return apiFetch(`/api/ai/insights/${month}`, accessToken) as Promise<{
+    insight: {
+      month: string
+      total_sent: number
+      total_received: number
+      top_categories: string[]
+      savings_suggestions: string[]
+      summary_text: string
+      anomalies_detected?: { description: string; reasoning: string }[]
+    }
+  }>
+}
+
+export async function apiDetectAnomalies(accessToken: string | null, month: string) {
+  return apiFetch('/api/ai/anomalies', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ month }),
+  }) as Promise<{ anomalies: { description: string; reasoning: string }[] }>
+}
+
+export async function apiSearchTransactions(accessToken: string | null, query: string) {
+  return apiFetch('/api/ai/search', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  }) as Promise<{
+    results: {
+      id: number
+      amount: string
+      currency: string
+      note: string | null
+      created_at: string
+      sender_name: string
+      receiver_name: string
+      direction: 'sent' | 'received'
+    }[]
+  }>
+}
