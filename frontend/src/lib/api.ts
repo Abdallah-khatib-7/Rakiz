@@ -287,3 +287,63 @@ export async function apiGetUsage(accessToken: string | null) {
     splits: { used: number; limit: number | null }
   }>
 }
+
+export async function apiCreateLink(
+  accessToken: string | null,
+  params: { amount?: number; currency: string; description?: string; is_single_use?: boolean; expires_in_hours?: number }
+) {
+  return apiFetch('/api/links', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }) as Promise<{ link: Record<string, unknown> }>
+}
+
+export async function apiGetLinks(accessToken: string | null) {
+  return apiFetch('/api/links?limit=30', accessToken) as Promise<{
+    links: {
+      id: number
+      token: string
+      amount: string | null
+      currency: string
+      description: string | null
+      is_single_use: boolean
+      use_count: number
+      expires_at: string | null
+      created_at: string
+    }[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>
+}
+
+export async function apiDeleteLink(accessToken: string | null, id: number) {
+  return apiFetch(`/api/links/${id}`, accessToken, { method: 'DELETE' })
+}
+
+// public — no auth, used on the standalone pay page
+export async function apiGetLinkByToken(token: string) {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const res = await fetch(`${API_URL}/api/links/pay/${token}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Link not found')
+  return data as {
+    link: {
+      token: string
+      amount: string | null
+      currency: string
+      description: string | null
+      owner_name: string
+      is_single_use: boolean
+      use_count: number
+      expires_at: string | null
+    }
+  }
+}
+
+export async function apiPayLinkByToken(accessToken: string | null, token: string, amount: number, currency: string) {
+  const idempotencyKey = `pay-link-${token}-${Date.now()}`
+  return apiFetch(`/api/links/pay/${token}`, accessToken, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ amount, currency }),
+  }) as Promise<{ transaction: Record<string, unknown> }>
+}

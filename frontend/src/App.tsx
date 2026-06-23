@@ -13,6 +13,9 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsOfServicePage from './pages/TermsOfServicePage'
 import ContactPage from './pages/ContactPage'
 import BillingPage from './pages/BillingPage'
+import LinksPage from './pages/LinksPage'
+import PayLinkPage from './pages/PayLinkPage.tsx'
+
 
 function App() {
   return (
@@ -27,6 +30,7 @@ function App() {
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/pay/:token" element={<PayLinkPage />} />
 
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
@@ -35,6 +39,7 @@ function App() {
             <Route path="/splits" element={<SplitsPage />} />
             <Route path="/requests" element={<RequestsPage />} />
             <Route path="/billing" element={<BillingPage />} />
+            <Route path="/links" element={<LinksPage />} />
           </Route>
         </Route>
       </Routes>
