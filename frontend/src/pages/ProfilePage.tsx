@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, Smartphone, Monitor, LogOut, X, Mail, Phone, Pencil, Check, Lock } from 'lucide-react'
+import { Camera, Smartphone, Monitor, LogOut, X, Mail, Phone, Pencil, Check, Lock, CreditCard } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import {
   apiGetSessions,
@@ -9,6 +10,8 @@ import {
   apiUploadAvatar,
   apiUpdateProfile,
   apiChangePassword,
+  apiGetUsage,
+  apiCreatePortalSession,
 } from '@/lib/api'
 
 type Session = {
@@ -62,10 +65,17 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
 
+  const [tier, setTier] = useState<string | null>(null)
+  const [openingPortal, setOpeningPortal] = useState(false)
+
   useEffect(() => {
     apiGetSessions(accessToken)
       .then((res) => setSessions(res.sessions))
       .finally(() => setLoadingSessions(false))
+  }, [accessToken])
+
+  useEffect(() => {
+    apiGetUsage(accessToken).then((res) => setTier(res.tier))
   }, [accessToken])
 
   const handleAvatarClick = () => fileInputRef.current?.click()
@@ -134,6 +144,16 @@ export default function ProfilePage() {
       setSessions([])
     } finally {
       setRevokingAll(false)
+    }
+  }
+
+  const handleManageSubscription = async () => {
+    setOpeningPortal(true)
+    try {
+      const { url } = await apiCreatePortalSession(accessToken)
+      window.location.href = url
+    } catch {
+      setOpeningPortal(false)
     }
   }
 
@@ -303,6 +323,38 @@ export default function ProfilePage() {
             </motion.form>
           )}
         </AnimatePresence>
+      </div>
+
+      <div className="mb-12 pb-10 border-b border-[var(--color-line)]">
+        <div className="flex items-baseline justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-[var(--color-bone)]" style={{ fontFamily: 'var(--font-display)' }}>
+              Plan
+            </h2>
+            <p className="text-sm text-[var(--color-bone-dim)] mt-1 capitalize">
+              {tier || 'free'}
+            </p>
+          </div>
+
+          {tier === 'free' ? (
+            <Link
+              to="/billing"
+              className="text-sm text-[var(--color-emerald-bright)] hover:underline flex items-center gap-1.5"
+            >
+              <CreditCard className="size-3.5" />
+              Upgrade plan
+            </Link>
+          ) : (
+            <button
+              onClick={handleManageSubscription}
+              disabled={openingPortal}
+              className="text-sm text-[var(--color-emerald-bright)] hover:underline flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <CreditCard className="size-3.5" />
+              {openingPortal ? 'Opening...' : 'Update or cancel plan'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-baseline justify-between mb-6">

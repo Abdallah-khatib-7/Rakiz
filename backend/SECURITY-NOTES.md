@@ -73,3 +73,14 @@
   This is a deliberate "good enough for demo/portfolio" choice — a real
   production deployment would need either a live LBP-supporting FX feed or
   a manual update process to keep the rate current.
+
+
+  ## Local dev reminder: Stripe webhook listener
+- Testing real Stripe checkout locally REQUIRES `stripe listen --forward-to
+  localhost:5000/api/subscriptions/webhook` running in its own terminal
+  the entire time you're testing — Stripe can't reach localhost otherwise.
+- Each time the listener restarts, it generates a NEW whsec_ signing secret.
+  Update STRIPE_WEBHOOK_SECRET in backend/.env to match, or webhook signature
+  verification silently fails and subscription_tier never updates.
+- This is dev-only. In Phase 10 production, Stripe calls our real public
+  webhook URL directly — no CLI tunnel needed there.
