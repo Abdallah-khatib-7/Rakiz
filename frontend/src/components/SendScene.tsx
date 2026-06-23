@@ -33,7 +33,7 @@ export default function SendScene() {
   ])
 
   return (
-    <section ref={containerRef} style={{ height: '380vh' }} className="relative bg-[var(--color-void)]">
+    <section id="how" ref={containerRef} style={{ height: '380vh' }} className="relative bg-[var(--color-void)]">
       <div className="sticky top-0 h-screen overflow-hidden flex items-center justify-center">
         <motion.div style={{ background: bgShift }} className="absolute inset-0 pointer-events-none" />
 

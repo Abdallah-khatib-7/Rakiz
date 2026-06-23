@@ -4,6 +4,7 @@ import GlobeScene from '../components/GlobeScene'
 import SendScene from '../components/SendScene'
 import SplitScene from '../components/SplitScene'
 import TrustScene from '../components/TrustScene'
+import PricingScene from '../components/PricingScene'
 import CTAScene from '../components/CTAScene'
 
 export default function LandingPage() {
@@ -15,6 +16,7 @@ export default function LandingPage() {
       <SendScene />
       <SplitScene />
       <TrustScene />
+      <PricingScene />
       <CTAScene />
     </>
   )

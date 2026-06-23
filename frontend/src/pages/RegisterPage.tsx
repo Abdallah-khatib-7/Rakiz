@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Eye, EyeOff, Mail, CheckCircle2 } from 'lucide-react'
+import { Eye, EyeOff, Mail, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { CharacterScene } from '@/components/CharacterScene'
 import { useCharacterAnimation } from '@/hooks/useCharacterAnimation'
 import { apiRegister } from '@/lib/api'
@@ -36,7 +36,14 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-[var(--color-void)]">
       <div className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-[var(--color-emerald)]/90 via-[var(--color-emerald)] to-[var(--color-emerald)]/70 p-12">
-        <div className="relative z-20">
+        <div className="relative z-20 flex items-center gap-4">
+          <a
+            href="/dashboard"
+            aria-label="Back to dashboard"
+            className="flex items-center justify-center size-8 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+          </a>
           <span className="text-lg font-semibold text-white" style={{ fontFamily: 'var(--font-display)' }}>RAKIZ</span>
         </div>
 

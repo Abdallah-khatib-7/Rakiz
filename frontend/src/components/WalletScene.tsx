@@ -24,7 +24,7 @@ export default function WalletScene() {
   const headingOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0.5])
 
   return (
-    <section ref={containerRef} style={{ height: '420vh' }} className="relative bg-[var(--color-void)]">
+        <section id="wallet" ref={containerRef} style={{ height: '420vh' }} className="relative bg-[var(--color-void)]">
       <div className="sticky top-0 h-screen overflow-hidden flex flex-col">
         <motion.div
           style={{ y: headingY, opacity: headingOpacity }}
