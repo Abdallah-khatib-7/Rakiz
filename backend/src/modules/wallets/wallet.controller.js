@@ -40,6 +40,24 @@ const send = async (req, res, next) => {
   }
 };
 
+const exchange = async (req, res, next) => {
+  try {
+    const db = req.app.get('db');
+    const idempotencyKey = req.headers['idempotency-key'];
+
+    const result = await walletService.exchangeCurrency(db, req.user, {
+      idempotencyKey,
+      fromCurrency: req.body.from_currency,
+      toCurrency: req.body.to_currency,
+      amount: req.body.amount,
+    }, req);
+
+    res.status(201).json({ transaction: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const getTransactions = async (req, res, next) => {
   try {
     const db = req.app.get('db');
@@ -59,4 +77,14 @@ const getTransactions = async (req, res, next) => {
   }
 };
 
-module.exports = { getWallets, getWallet, send, getTransactions };
+const createWallet = async (req, res, next) => {
+  try {
+    const db = req.app.get('db');
+    const wallet = await walletService.createWallet(db, req.user.id, req.body.currency);
+    res.status(201).json({ wallet });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getWallets, getWallet, send, getTransactions, exchange, createWallet };

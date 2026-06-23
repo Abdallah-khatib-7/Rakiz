@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS wallets (
 CREATE TABLE IF NOT EXISTS ledger_entries (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   idempotency_key VARCHAR(255) NOT NULL UNIQUE,
-  type ENUM('transfer', 'deposit', 'withdrawal', 'fee', 'adjustment', 'split_settle') NOT NULL,
+  type ENUM('transfer', 'deposit', 'withdrawal', 'fee', 'adjustment', 'split_settle', 'exchange') NOT NULL,
   debit_wallet_id BIGINT UNSIGNED NULL,
   credit_wallet_id BIGINT UNSIGNED NULL,
   amount DECIMAL(18,8) NOT NULL,

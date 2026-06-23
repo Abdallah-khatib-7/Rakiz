@@ -33,6 +33,18 @@ const schemas = {
       currency: Joi.string().valid('USD', 'EUR', 'LBP', 'SAR', 'AED', 'GBP').optional(),
     }),
   },
+  exchange: {
+    body: Joi.object({
+      from_currency: Joi.string().valid('USD', 'EUR', 'LBP', 'SAR', 'AED', 'GBP').required(),
+      to_currency: Joi.string().valid('USD', 'EUR', 'LBP', 'SAR', 'AED', 'GBP').required(),
+      amount: Joi.number().positive().precision(8).required(),
+    }),
+  },
+  createWallet: {
+    body: Joi.object({
+      currency: Joi.string().valid('USD', 'EUR', 'LBP', 'SAR', 'AED', 'GBP').required(),
+    }),
+  },
 };
 
 router.get('/', controller.getWallets);
@@ -42,5 +54,6 @@ router.get('/transactions', validate(schemas.getTransactions), controller.getTra
 router.get('/:currency', validate(schemas.getWallet), controller.getWallet);
 
 router.post('/send', validate(schemas.send), controller.send);
-
+router.post('/exchange', validate(schemas.exchange), controller.exchange);
+router.post('/', validate(schemas.createWallet), controller.createWallet);
 module.exports = router;

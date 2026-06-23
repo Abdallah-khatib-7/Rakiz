@@ -37,9 +37,46 @@ const getRates = async (base) => {
   return rates;
 };
 
+// SAR and AED are genuine government-fixed pegs to USD — these numbers don't
+// move, so hardcoding them is accurate, not an approximation.
+//
+// LBP is different and worth being honest about: it floats on a volatile
+// market with no official peg since Lebanon's currency crisis. 89,000 is a
+// real snapshot rate as of June 2026, not a government-set number, and it
+// WILL drift out of date as the real market rate moves. This is a deliberate
+// "good enough for a demo/portfolio app" choice, not a production-grade FX
+// feed — a real deployment would need a live LBP data source (most free
+// rate APIs, including our own Frankfurter integration, don't carry it at
+// all) or a manual update process to keep this current.
+const FIXED_RATES = {
+  SAR: 3.75,
+  AED: 3.6725,
+  LBP: 89000,
+};
+
+const getFixedRate = (fromCurrency, toCurrency) => {
+  if (fromCurrency === 'USD' && FIXED_RATES[toCurrency]) {
+    return FIXED_RATES[toCurrency];
+  }
+  if (toCurrency === 'USD' && FIXED_RATES[fromCurrency]) {
+    return 1 / FIXED_RATES[fromCurrency];
+  }
+  if (FIXED_RATES[fromCurrency] && FIXED_RATES[toCurrency]) {
+    // both fixed against USD — derive the cross rate through USD
+    return FIXED_RATES[toCurrency] / FIXED_RATES[fromCurrency];
+  }
+  return null;
+};
+
 const convert = async (amount, fromCurrency, toCurrency) => {
   if (fromCurrency === toCurrency) {
     return { convertedAmount: amount, rate: 1 };
+  }
+
+  const fixedRate = getFixedRate(fromCurrency, toCurrency);
+  if (fixedRate) {
+    const convertedAmount = parseFloat((amount * fixedRate).toFixed(8));
+    return { convertedAmount, rate: fixedRate };
   }
 
   const rates = await getRates(fromCurrency);

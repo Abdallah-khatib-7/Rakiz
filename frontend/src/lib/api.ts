@@ -421,3 +421,34 @@ export async function apiSearchTransactions(accessToken: string | null, query: s
     }[]
   }>
 }
+
+export async function apiExchangeCurrency(
+  accessToken: string | null,
+  fromCurrency: string,
+  toCurrency: string,
+  amount: number
+) {
+  const idempotencyKey = `exchange-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return apiFetch('/api/wallets/exchange', accessToken, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ from_currency: fromCurrency, to_currency: toCurrency, amount }),
+  }) as Promise<{
+    transaction: {
+      transactionId: number
+      ledgerEntryId: number
+      amount: number
+      currency: string
+      convertedAmount: number | null
+      convertedCurrency: string | null
+      rate: number | null
+    }
+  }>
+}
+
+export async function apiCreateWallet(accessToken: string | null, currency: string) {
+  return apiFetch('/api/wallets', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ currency }),
+  }) as Promise<{ wallet: { id: number; currency: string; balance: string } }>
+}

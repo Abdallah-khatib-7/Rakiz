@@ -57,3 +57,19 @@
 - To ship this later: add Twilio account + Verify service, a
   `phone_verified` boolean column, a verify-phone endpoint, and gate
   send-by-phone in wallet.service.js behind that flag.
+
+
+  ## Currency exchange: fixed rates for SAR, AED, LBP
+- Frankfurter (our live FX data source) doesn't carry SAR, AED, or LBP at
+  all — confirmed via their public currency list. Exchanging into/out of
+  these three would otherwise fail with "no rate available."
+- SAR and AED are genuine, government-fixed pegs to USD (3.75 and 3.6725
+  respectively, set by their central banks since the 1980s/70s) — hardcoding
+  these is accurate, not an approximation, and they will not drift.
+- LBP is fundamentally different and intentionally flagged as such in code
+  comments (exchange.service.js): it floats on a volatile market with no
+  official peg since Lebanon's currency crisis. 89,000 LBP/USD is a real
+  snapshot rate as of June 2026, but WILL go stale as the real rate moves.
+  This is a deliberate "good enough for demo/portfolio" choice — a real
+  production deployment would need either a live LBP-supporting FX feed or
+  a manual update process to keep the rate current.

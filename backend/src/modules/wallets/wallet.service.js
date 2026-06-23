@@ -81,6 +81,46 @@ const send = async (db, sender, { idempotencyKey, receiverIdentifier, amount, cu
   return txResult;
 };
 
+const exchangeCurrency = async (db, user, { idempotencyKey, fromCurrency, toCurrency, amount }, req) => {
+  if (!SUPPORTED.includes(fromCurrency) || !SUPPORTED.includes(toCurrency)) {
+    throw Object.assign(new Error('Unsupported currency'), { status: 422 });
+  }
+
+  
+
+  if (fromCurrency === toCurrency) {
+    throw Object.assign(new Error('Cannot exchange a currency into itself'), { status: 422 });
+  }
+
+  if (!idempotencyKey) {
+    throw Object.assign(new Error('Idempotency key is required'), { status: 422 });
+  }
+
+  const { duplicate, result } = await check(idempotencyKey);
+  if (duplicate) return result;
+
+  // exchanging is just a transfer where the sender and receiver are the same
+  // person — transfer() already handles the cross-currency conversion, the
+  // double-entry ledger, and the row locking correctly for this case, since
+  // it locks both wallet rows (even if they belong to the same user) before
+  // touching either balance
+  const txResult = await transfer(db, {
+    idempotencyKey,
+    senderId: user.id,
+    receiverId: user.id,
+    amount: parseFloat(amount),
+    currency: fromCurrency,
+    targetCurrency: toCurrency,
+    note: `Currency exchange: ${fromCurrency} to ${toCurrency}`,
+    type: 'exchange',
+    auditEventType: 'wallet.exchanged',
+  }, req);
+
+  await save(idempotencyKey, txResult);
+
+  return txResult;
+};
+
 const getTransactions = async (db, userId, { page = 1, limit = 20, currency } = {}) => {
   const offset = (page - 1) * limit;
 
@@ -125,4 +165,11 @@ const getTransactions = async (db, userId, { page = 1, limit = 20, currency } = 
   };
 };
 
-module.exports = { getWallets, getWallet, send, getTransactions };
+const createWallet = async (db, userId, currency) => {
+  if (!SUPPORTED.includes(currency)) {
+    throw Object.assign(new Error(`Unsupported currency: ${currency}`), { status: 422 });
+  }
+  return getOrCreateWallet(db, userId, currency);
+};
+
+module.exports = { getWallets, getWallet, send, getTransactions, exchangeCurrency, createWallet };
