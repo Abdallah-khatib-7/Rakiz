@@ -18,6 +18,8 @@ import PayLinkPage from './pages/PayLinkPage.tsx'
 import AIPage from './pages/AIPage.tsx'
 import NotificationsPage from './pages/NotificationsPage'
 import { SocketProvider } from './context/SocketContext'
+import ProfilePage from './pages/ProfilePage'
+
 
 function App() {
   return (
@@ -45,6 +47,7 @@ function App() {
               <Route path="/links" element={<LinksPage />} />
               <Route path="/ai" element={<AIPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
         </Routes>

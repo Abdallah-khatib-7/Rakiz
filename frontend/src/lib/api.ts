@@ -452,3 +452,48 @@ export async function apiCreateWallet(accessToken: string | null, currency: stri
     body: JSON.stringify({ currency }),
   }) as Promise<{ wallet: { id: number; currency: string; balance: string } }>
 }
+
+
+export async function apiGetSessions(accessToken: string | null) {
+  return apiFetch('/api/users/sessions', accessToken) as Promise<{
+    sessions: { id: number; ip: string | null; userAgent: string; createdAt: string; expiresAt: string }[]
+  }>
+}
+
+export async function apiRevokeSession(accessToken: string | null, id: number) {
+  return apiFetch(`/api/users/sessions/${id}`, accessToken, { method: 'DELETE' })
+}
+
+export async function apiRevokeAllSessions(accessToken: string | null) {
+  return apiFetch('/api/users/sessions/revoke-all', accessToken, { method: 'POST' })
+}
+
+export async function apiUploadAvatar(accessToken: string | null, file: File) {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const formData = new FormData()
+  formData.append('avatar', file)
+
+  const res = await fetch(`${API_URL}/api/users/avatar`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Avatar upload failed')
+  return data as { avatar_url: string }
+}
+
+export async function apiUpdateProfile(accessToken: string | null, params: { full_name?: string; phone?: string }) {
+  return apiFetch('/api/users/profile', accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify(params),
+  }) as Promise<{ user: Record<string, unknown> }>
+}
+
+export async function apiChangePassword(accessToken: string | null, currentPassword: string, newPassword: string) {
+  return apiFetch('/api/users/change-password', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  }) as Promise<{ message: string }>
+}

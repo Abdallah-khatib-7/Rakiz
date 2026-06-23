@@ -3,6 +3,7 @@ import { create } from 'zustand'
 type User = {
   id: number
   email: string
+  phone: string | null
   full_name: string
   avatar_url: string | null
   role: string
