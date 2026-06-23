@@ -3,7 +3,7 @@ const splitService = require('./split.service');
 const createSplit = async (req, res, next) => {
   try {
     const db = req.app.get('db');
-    const split = await splitService.createSplit(db, req.user.id, req.body);
+    const split = await splitService.createSplit(db, req.user, req.body);
     res.status(201).json({ split });
   } catch (err) {
     next(err);

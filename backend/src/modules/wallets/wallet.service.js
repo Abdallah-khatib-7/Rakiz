@@ -1,6 +1,7 @@
 const { getOrCreateWallet, transfer } = require('../../services/ledger.service');
 const { check, save } = require('../../services/idempotency.service');
 const { SUPPORTED } = require('../../services/exchange.service');
+const tierLimits = require('../../services/tierLimits.service');
 
 const getWallets = async (db, userId) => {
   const [rows] = await db.query(
@@ -20,10 +21,12 @@ const getWallet = async (db, userId, currency) => {
   return getOrCreateWallet(db, userId, currency);
 };
 
-const send = async (db, senderId, { idempotencyKey, receiverIdentifier, amount, currency, targetCurrency, note }, req) => {
+const send = async (db, sender, { idempotencyKey, receiverIdentifier, amount, currency, targetCurrency, note }, req) => {
   if (!SUPPORTED.includes(currency)) {
     throw Object.assign(new Error(`Unsupported currency: ${currency}`), { status: 422 });
   }
+
+  await tierLimits.assertCanSend(db, sender);
 
   if (targetCurrency && !SUPPORTED.includes(targetCurrency)) {
     throw Object.assign(new Error(`Unsupported target currency: ${targetCurrency}`), { status: 422 });
@@ -40,9 +43,6 @@ const send = async (db, senderId, { idempotencyKey, receiverIdentifier, amount, 
   const { duplicate, result } = await check(idempotencyKey);
   if (duplicate) return result;
 
-  // a phone-like identifier is digits with an optional leading + and no @,
-  // since real emails never look like that — this lets one field accept
-  // either without the caller needing to specify which kind it sent
   const looksLikePhone = /^\+?[0-9\s-]{6,20}$/.test(receiverIdentifier);
 
   const [rows] = await db.query(
@@ -57,7 +57,7 @@ const send = async (db, senderId, { idempotencyKey, receiverIdentifier, amount, 
     throw Object.assign(new Error('Recipient not found'), { status: 404 });
   }
 
-  if (receiver.id === senderId) {
+  if (receiver.id === sender.id) {
     throw Object.assign(new Error('Cannot send money to yourself'), { status: 422 });
   }
 
@@ -67,7 +67,7 @@ const send = async (db, senderId, { idempotencyKey, receiverIdentifier, amount, 
 
   const txResult = await transfer(db, {
     idempotencyKey,
-    senderId,
+    senderId: sender.id,
     receiverId: receiver.id,
     amount: parseFloat(amount),
     currency,

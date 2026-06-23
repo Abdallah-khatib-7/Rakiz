@@ -4,14 +4,17 @@ const { SUPPORTED } = require('../../services/exchange.service');
 const { v4: uuidv4 } = require('uuid');
 const { emitToUser } = require('../../services/socket.service');
 const { createNotification } = require('../notifications/notification.service');
+const tierLimits = require('../../services/tierLimits.service');
 
 const httpError = (status, message) =>
   Object.assign(new Error(message), { status });
 
-const createSplit = async (db, creatorId, { title, total_amount, currency, split_type, members }) => {
+const createSplit = async (db, creator, { title, total_amount, currency, split_type, members }) => {
   if (!SUPPORTED.includes(currency)) {
     throw httpError(422, `Unsupported currency: ${currency}`);
   }
+
+  await tierLimits.assertCanCreateSplit(db, creator);
 
   if (!['equal', 'custom', 'percentage'].includes(split_type)) {
     throw httpError(422, 'Invalid split type');
@@ -80,7 +83,7 @@ const createSplit = async (db, creatorId, { title, total_amount, currency, split
     const [splitResult] = await connection.query(
       `INSERT INTO splits (created_by, title, total_amount, currency, split_type, status)
        VALUES (?, ?, ?, ?, ?, 'open')`,
-      [creatorId, title, total_amount, currency, split_type]
+      [creator.id, title, total_amount, currency, split_type]
     );
 
     const splitId = splitResult.insertId;
@@ -95,7 +98,7 @@ const createSplit = async (db, creatorId, { title, total_amount, currency, split
 
     await connection.commit();
 
-    return getSplit(db, splitId, creatorId);
+    return getSplit(db, splitId, creator.id);
   } catch (err) {
     await connection.rollback();
     throw err;

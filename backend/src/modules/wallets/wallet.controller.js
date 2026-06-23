@@ -25,7 +25,7 @@ const send = async (req, res, next) => {
     const db = req.app.get('db');
     const idempotencyKey = req.headers['idempotency-key'];
 
-    const result = await walletService.send(db, req.user.id, {
+    const result = await walletService.send(db, req.user, {
       idempotencyKey,
       receiverIdentifier: req.body.receiver_identifier,
       amount: req.body.amount,
