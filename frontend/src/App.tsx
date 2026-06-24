@@ -6,6 +6,7 @@ import AuthCallback from './pages/AuthCallback'
 import DashboardPage from './pages/DashboardPage'
 import AppLayout from './components/AppLayout'
 import RequireAuth from './components/RequireAuth'
+import RequireAdmin from './components/RequireAdmin'
 import WalletPage from './pages/WalletPage'
 import SplitsPage from './pages/SplitsPage'
 import RequestsPage from './pages/RequestsPage'
@@ -19,7 +20,7 @@ import AIPage from './pages/AIPage.tsx'
 import NotificationsPage from './pages/NotificationsPage'
 import { SocketProvider } from './context/SocketContext'
 import ProfilePage from './pages/ProfilePage'
-
+import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
@@ -48,6 +49,10 @@ function App() {
               <Route path="/ai" element={<AIPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+
+              <Route element={<RequireAdmin />}>
+                <Route path="/admin" element={<AdminPage />} />
+              </Route>
             </Route>
           </Route>
         </Routes>

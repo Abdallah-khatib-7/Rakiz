@@ -1,6 +1,10 @@
 const { getRedis } = require('../config/redis');
 const { emitToUser } = require('./socket.service');
 const { createNotification } = require('../modules/notifications/notification.service');
+const OpenAI = require('openai');
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const MODEL = 'gpt-4o-mini';
 
 // Tunable thresholds. Kept as constants here rather than buried in logic so
 // they're easy to find and adjust as real usage patterns emerge.
@@ -145,6 +149,95 @@ const isLockedOut = async (email) => {
   return count ? parseInt(count) >= FAILED_LOGIN_MAX_ATTEMPTS : false;
 };
 
+// Generates a real, specific explanation for a single fraud flag, pulling
+// the actual ledger entry it's tied to (amount, currency, timing) plus a bit
+// of the user's recent transaction history for context, then asks the model
+// to explain plainly why this looked suspicious and what an admin should do.
+// This is separate from the rule engine itself — the rules decide WHETHER to
+// flag, this just explains a single already-flagged incident in plain
+// language for a human reviewer.
+const explainFlag = async (db, flagId) => {
+  const [flags] = await db.query(
+    `SELECT ff.*, u.email AS user_email, u.full_name AS user_name
+       FROM fraud_flags ff
+       JOIN users u ON u.id = ff.user_id
+      WHERE ff.id = ? LIMIT 1`,
+    [flagId]
+  );
+
+  const flagRow = flags[0];
+  if (!flagRow) {
+    throw Object.assign(new Error('Fraud flag not found'), { status: 404 });
+  }
+
+  let ledgerContext = 'No specific transaction is linked to this flag (e.g. a login-based alert).';
+  if (flagRow.ledger_entry_id) {
+    const [entries] = await db.query(
+      'SELECT amount, currency, type, created_at, description FROM ledger_entries WHERE id = ? LIMIT 1',
+      [flagRow.ledger_entry_id]
+    );
+    if (entries[0]) {
+      const e = entries[0];
+      ledgerContext = `Transaction: ${e.amount} ${e.currency}, type "${e.type}", at ${e.created_at.toISOString()}. ${e.description || ''}`;
+    }
+  }
+
+  // a little recent history for context — were they sending normal amounts
+  // before this, or is this a one-off spike?
+  const [recent] = await db.query(
+    `SELECT amount, currency, created_at
+       FROM transactions
+      WHERE sender_id = ?
+      ORDER BY created_at DESC
+      LIMIT 10`,
+    [flagRow.user_id]
+  );
+  const recentSummary = recent
+    .map((t) => `${t.amount} ${t.currency} on ${t.created_at.toISOString().slice(0, 10)}`)
+    .join('; ') || 'No prior sends on record.';
+
+  const completion = await client.chat.completions.create({
+    model: MODEL,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a fraud review assistant for a digital wallet platform. ' +
+          'Given a single flagged incident, the rule that triggered it, the ' +
+          'specific transaction details, and the user\'s recent transaction ' +
+          'history, explain in plain language why this was flagged and ' +
+          'recommend a next step for the reviewing admin. Respond with JSON: ' +
+          '{ "explanation": string (2-3 sentences, specific to this incident, ' +
+          'reference the actual numbers given), "recommendation": string (one ' +
+          'short actionable sentence: e.g. "Likely safe, dismiss" or "Contact ' +
+          'the user to confirm before resolving" or "Recommend freezing the ' +
+          'account pending review") }. Be specific and grounded in the data ' +
+          'given — never invent numbers not present in the input.',
+      },
+      {
+        role: 'user',
+        content:
+          `Rule triggered: ${flagRow.rule_triggered}\n` +
+          `Severity: ${flagRow.severity}\n` +
+          `User: ${flagRow.user_name} (${flagRow.user_email})\n` +
+          `Flagged incident: ${ledgerContext}\n` +
+          `User's 10 most recent sends: ${recentSummary}`,
+      },
+    ],
+  });
+
+  const parsed = JSON.parse(completion.choices[0].message.content);
+
+  return {
+    rule: flagRow.rule_triggered,
+    severity: flagRow.severity,
+    ledgerContext,
+    explanation: parsed.explanation || '',
+    recommendation: parsed.recommendation || '',
+  };
+};
+
 module.exports = {
   checkAmountAnomaly,
   checkVelocity,
@@ -153,4 +246,5 @@ module.exports = {
   recordFailedLogin,
   clearFailedLogins,
   isLockedOut,
+  explainFlag,
 };

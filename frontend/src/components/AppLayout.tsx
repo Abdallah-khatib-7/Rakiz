@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { Send, Users, Inbox, Link2, Sparkles, Bell, LogOut } from 'lucide-react'
+import { Send, Users, Inbox, Link2, Sparkles, Bell, LogOut, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useSocket } from '@/context/SocketContext'
 import { apiGetNotifications } from '@/lib/api'
@@ -20,6 +20,10 @@ export default function AppLayout() {
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const { unreadCount, setUnreadCount } = useSocket()
 
+  const navItems = user?.role === 'admin'
+    ? [...NAV_ITEMS, { to: '/admin', label: 'Admin', icon: ShieldCheck }]
+    : NAV_ITEMS
+
   useEffect(() => {
     apiGetNotifications(accessToken, 1, 1, true).then((res) => setUnreadCount(res.unreadCount))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -38,7 +42,7 @@ export default function AppLayout() {
         </NavLink>
 
         <nav className="hidden md:flex items-center gap-8">
-          {NAV_ITEMS.map(({ to, label }) => (
+          {navItems.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}

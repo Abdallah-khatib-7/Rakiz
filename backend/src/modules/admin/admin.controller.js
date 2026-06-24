@@ -1,4 +1,5 @@
 const adminService = require('./admin.service');
+const fraudService = require('../../services/fraud.service');
 
 const getUsers = async (req, res, next) => {
   try {
@@ -101,6 +102,16 @@ const getRevenueStats = async (req, res, next) => {
   }
 };
 
+const explainFraudFlag = async (req, res, next) => {
+  try {
+    const db = req.app.get('db');
+    const explanation = await fraudService.explainFlag(db, parseInt(req.params.id));
+    res.json({ explanation });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getUsers,
   getUserDetail,
@@ -109,4 +120,5 @@ module.exports = {
   reviewFraudFlag,
   adjustBalance,
   getRevenueStats,
+  explainFraudFlag,
 };

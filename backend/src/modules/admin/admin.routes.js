@@ -73,6 +73,8 @@ router.get('/fraud-queue', validate(schemas.getFraudQueue), controller.getFraudQ
 
 router.patch('/fraud-queue/:id', validate(schemas.reviewFraudFlag), controller.reviewFraudFlag);
 
+router.get('/fraud-queue/:id/explain', validate(schemas.getUserDetail), controller.explainFraudFlag);
+
 router.post('/users/:id/adjust-balance', validate(schemas.adjustBalance), controller.adjustBalance);
 
 router.get('/revenue', controller.getRevenueStats);

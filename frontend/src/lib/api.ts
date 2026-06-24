@@ -497,3 +497,68 @@ export async function apiChangePassword(accessToken: string | null, currentPassw
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
   }) as Promise<{ message: string }>
 }
+
+
+export async function apiAdminGetUsers(accessToken: string | null, page = 1, search = '', status?: string) {
+  const params = new URLSearchParams({ page: String(page), limit: '20', search })
+  if (status) params.set('status', status)
+  return apiFetch(`/api/admin/users?${params}`, accessToken) as Promise<{
+    users: { id: number; email: string; full_name: string; role: string; status: string; subscription_tier: string; email_verified: boolean; created_at: string; last_login_at: string | null }[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>
+}
+
+export async function apiAdminGetUserDetail(accessToken: string | null, id: number) {
+  return apiFetch(`/api/admin/users/${id}`, accessToken) as Promise<{
+    user: Record<string, unknown>
+    wallets: { id: number; currency: string; balance: string; is_locked: boolean }[]
+    fraudFlags: { id: number; rule_triggered: string; severity: string; status: string; created_at: string }[]
+  }>
+}
+
+export async function apiAdminSetUserStatus(accessToken: string | null, id: number, status: string) {
+  return apiFetch(`/api/admin/users/${id}/status`, accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export async function apiAdminGetFraudQueue(accessToken: string | null, status = 'open') {
+  return apiFetch(`/api/admin/fraud-queue?status=${status}&limit=30`, accessToken) as Promise<{
+    flags: { id: number; user_id: number; user_email: string; user_name: string; rule_triggered: string; severity: string; status: string; created_at: string }[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>
+}
+
+export async function apiAdminReviewFraudFlag(accessToken: string | null, id: number, status: string) {
+  return apiFetch(`/api/admin/fraud-queue/${id}`, accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export async function apiAdminAdjustBalance(accessToken: string | null, userId: number, currency: string, amount: number, reason: string) {
+  return apiFetch(`/api/admin/users/${userId}/adjust-balance`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ currency, amount, reason }),
+  })
+}
+
+export async function apiAdminGetRevenue(accessToken: string | null) {
+  return apiFetch('/api/admin/revenue', accessToken) as Promise<{
+    users: { total: number; free: number; pro: number; business: number }
+    transactions: { total: number; totalFeesCollected: number; last30Days: number }
+  }>
+}
+
+export async function apiAdminExplainFraudFlag(accessToken: string | null, id: number) {
+  return apiFetch(`/api/admin/fraud-queue/${id}/explain`, accessToken) as Promise<{
+    explanation: {
+      rule: string
+      severity: string
+      ledgerContext: string
+      explanation: string
+      recommendation: string
+    }
+  }>
+}
