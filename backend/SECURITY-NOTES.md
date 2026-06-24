@@ -7,15 +7,15 @@
   socket.io itself stayed at 4.8.3. `npm audit` now reports 0 vulnerabilities.
 
 
+## RESOLVED: nodemailer message-level raw option bypass (GHSA-p6gq-j5cr-w38f)
+- Resolved via `npm audit fix`. Not actively exploitable in our code either
+  way — mailer.js and email.service.js only ever use the standard templated
+  send (to/subject/html), never the `raw` option this advisory concerns.
+  Fixed anyway since a clean fix was available at no cost.
 
-## Pending: MongoDB Atlas open IP allowlist (0.0.0.0/0)
-- Added during local development for convenience (dynamic IP issues).
-- Action required: Before production deploy (Phase 10), remove 0.0.0.0/0
-  from Network Access in Atlas and replace with the actual EC2 instance IP
-  or VPC peering.
-- Risk during development: Low — database still requires valid credentials,
-  but anyone with the connection string could attempt to connect.
-  ## RESOLVED: MongoDB Atlas open IP allowlist (0.0.0.0/0)
+
+## RESOLVED: MongoDB Atlas open IP allowlist (0.0.0.0/0)
+- Added during local development for convenience (dynamic home IP).
 - Removed 2026-06-24. Replaced with specific /32 entries for the
   developer's actual current IP.
 - Real complication discovered while fixing this: the home network's IP
@@ -25,12 +25,18 @@
   but were actually just an IP that changed faster than expected.
 - Two older stale entries (178.135.15.59/32, 178.135.19.53/32) are still
   present from earlier in the project — safe to delete, just hygiene, not
-  urgent. Not currently in use.
+  urgent. Not currently in use as of this writing.
 - For Phase 10: add the EC2 instance's IP as a permanent allowlist entry.
-  EC2 IPs are static (or made static via Elastic IP), so this won't have
-  the rotation problem the developer's home connection does.
+  EC2 IPs are static (or made static via an Elastic IP, which we should
+  provision specifically so this IP never has to change), so this won't
+  have the rotation problem the developer's home connection does.
+- Confirmed this allowlist only gates backend-to-database access — it has
+  no effect on end users. Any user, from any network, connects through the
+  backend server normally; only the backend's own IP needs to be allowed
+  through to MongoDB.
 
-  ## Scaling & performance hardening (scheduled for Phase 9.5 / Phase 10)
+
+## Scaling & performance hardening (scheduled for Phase 10)
 - [ ] Wallet balance caching in Redis, with airtight invalidation on every
       write inside ledger.service.js transfer(). Stale balance reads are a
       real correctness bug in a financial app, not just a performance nit.
@@ -72,7 +78,7 @@
   send-by-phone in wallet.service.js behind that flag.
 
 
-  ## Currency exchange: fixed rates for SAR, AED, LBP
+## Currency exchange: fixed rates for SAR, AED, LBP
 - Frankfurter (our live FX data source) doesn't carry SAR, AED, or LBP at
   all — confirmed via their public currency list. Exchanging into/out of
   these three would otherwise fail with "no rate available."
@@ -88,7 +94,7 @@
   a manual update process to keep the rate current.
 
 
-  ## Local dev reminder: Stripe webhook listener
+## Local dev reminder: Stripe webhook listener
 - Testing real Stripe checkout locally REQUIRES `stripe listen --forward-to
   localhost:5000/api/subscriptions/webhook` running in its own terminal
   the entire time you're testing — Stripe can't reach localhost otherwise.
@@ -96,4 +102,25 @@
   Update STRIPE_WEBHOOK_SECRET in backend/.env to match, or webhook signature
   verification silently fails and subscription_tier never updates.
 - This is dev-only. In Phase 10 production, Stripe calls our real public
-  webhook URL directly — no CLI tunnel needed there.
+  webhook URL directly (registered in the Stripe Dashboard against the real
+  domain) — no CLI tunnel needed there, and no manually-copied whsec_ value
+  either, since the Dashboard generates a stable one for that endpoint.
+
+
+## Pending for Phase 10: production environment checklist
+A running list of things specifically tied to going live, separate from the
+items above which are either already fixed or independently deferred.
+- [ ] EC2 Elastic IP — make the instance's public IP permanent before
+      pointing anything (DNS, Atlas allowlist, OAuth callback URLs) at it.
+- [ ] Update GOOGLE_CALLBACK_URL, FRONTEND_URL, API_URL in backend/.env to
+      real production domains instead of localhost.
+- [ ] Register the real Stripe webhook URL in the Stripe Dashboard, get a
+      permanent STRIPE_WEBHOOK_SECRET from there (not a CLI-generated one).
+- [ ] nginx + Certbot for SSL on the EC2 instance.
+- [ ] Frontend deploy to Vercel, with VITE_API_URL pointed at the real
+      backend domain.
+- [ ] Re-verify the rakiz.uk domain's Resend DNS records still resolve
+      correctly from the production environment (should be unaffected,
+      but worth a real send-test post-deploy rather than assuming).
+- [ ] CORS allowed origins in app.js need the real production frontend
+      domain added, not just localhost:5173.
