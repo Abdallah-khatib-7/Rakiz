@@ -15,7 +15,20 @@
   or VPC peering.
 - Risk during development: Low — database still requires valid credentials,
   but anyone with the connection string could attempt to connect.
-
+  ## RESOLVED: MongoDB Atlas open IP allowlist (0.0.0.0/0)
+- Removed 2026-06-24. Replaced with specific /32 entries for the
+  developer's actual current IP.
+- Real complication discovered while fixing this: the home network's IP
+  rotates frequently (185.97.95.176 -> 185.97.94.153 within ~10 minutes),
+  same ISP block but different address each time. This caused several
+  confusing "still can't connect" moments that looked like an Atlas bug
+  but were actually just an IP that changed faster than expected.
+- Two older stale entries (178.135.15.59/32, 178.135.19.53/32) are still
+  present from earlier in the project — safe to delete, just hygiene, not
+  urgent. Not currently in use.
+- For Phase 10: add the EC2 instance's IP as a permanent allowlist entry.
+  EC2 IPs are static (or made static via Elastic IP), so this won't have
+  the rotation problem the developer's home connection does.
 
   ## Scaling & performance hardening (scheduled for Phase 9.5 / Phase 10)
 - [ ] Wallet balance caching in Redis, with airtight invalidation on every
