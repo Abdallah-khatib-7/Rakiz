@@ -13,18 +13,49 @@
 ![Stripe](https://img.shields.io/badge/Stripe-Payments-008CDD?style=for-the-badge&logo=stripe&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-412991?style=for-the-badge&logo=openai&logoColor=white)
 ![License](https://img.shields.io/badge/License-Portfolio-orange?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Live-brightgreen?style=for-the-badge)
 
-*Rakiz* — Arabic for "pillar" or "foundation." A multi-currency digital wallet and real-time payment splitting platform, built with bank-grade engineering discipline from the ground up: double-entry bookkeeping, row-level locking, idempotent transfers, encrypted PII, and an AI-assisted fraud queue — not bolted on after the fact, but designed in from the schema up.
+> *Rakiz* — Arabic for "pillar" or "foundation."
 
-Multi-currency wallets · Instant transfers · Bill splitting · Payment requests · Shareable payment links · AI financial insights · Stripe subscriptions · Admin fraud review
+A multi-currency digital wallet and real-time payment splitting platform, built with bank-grade engineering discipline from the ground up: double-entry bookkeeping, row-level locking, idempotent transfers, encrypted PII, and an AI-assisted fraud queue — not bolted on after the fact, but designed in from the schema up.
 
-Built by **Abdallah Khatib** — Computer Science graduate, Lebanese International University, and the developer behind PharmaCare, Tawla, and AceIt.
+**Multi-currency wallets · Instant transfers · Bill splitting · Payment requests · Shareable payment links · AI financial insights · Stripe subscriptions · Admin fraud review**
+
+Built by **Abdallah Khatib** — Computer Science graduate, Lebanese International University.
+
+---
+
+## 🌐 Live Demo
+
+| | URL |
+|---|---|
+| **Frontend** | [rakiz-mocha.vercel.app](https://rakiz-mocha.vercel.app) |
+| **API** | [api.rakiz.uk](https://api.rakiz.uk) |
+
+> The full stack is live — EC2 (Docker + nginx + SSL), MongoDB Atlas, Redis Cloud, and Vercel, all wired together and tested end to end.
+
+---
+
+## Table of Contents
+
+- [About](#about)
+- [Key Features](#-key-features)
+- [Tech Stack](#️-tech-stack)
+- [Architecture Decisions](#architecture-decisions-worth-knowing)
+- [API Reference](#-api-reference)
+- [Business Logic](#-key-business-logic)
+- [Security](#-security)
+- [Project Structure](#-project-structure)
+- [Database Schema](#️-mysql-schema-13-tables)
+- [Running Locally](#-running-locally)
+- [Known Limitations](#known-limitations--honest-caveats)
+- [About the Author](#-about)
 
 ---
 
 ## About
 
-Rakiz exists to answer a simple question properly: what does it actually take to move money between people correctly? Not "looks right in a demo," but correctly — every debit has a matching credit, every transfer is provably idempotent, every balance read reflects a row-locked, committed state, and every account action leaves an audit trail.
+Rakiz exists to answer a simple question properly: what does it actually take to move money between people **correctly**? Not "looks right in a demo," but correctly — every debit has a matching credit, every transfer is provably idempotent, every balance read reflects a row-locked committed state, and every account action leaves an audit trail.
 
 It was built phase by phase, backend first: the ledger and double-entry bookkeeping before any UI existed to display a balance; authentication, session rotation, and fraud rules before a single dollar moved; then a full custom frontend — landing page, every authenticated page, real-time notifications, an AI insights layer, and an admin panel — wired against that backend rather than mocked against assumptions about it.
 
@@ -56,7 +87,7 @@ It was built phase by phase, backend first: the ledger and double-entry bookkeep
 
 ### 🔗 Payment Links
 - Fixed-amount or open-amount, single-use or reusable, optional expiry
-- Public pay page (`/pay/:token`) — anyone can view what a link is for without an account; paying it requires sign-in
+- Public pay page (`/pay/:token`) — anyone can view what a link is for without an account; paying requires sign-in
 - One-tap copy-to-clipboard with animated confirmation
 
 ### 🧠 AI Financial Insights
@@ -145,29 +176,35 @@ It was built phase by phase, backend first: the ledger and double-entry bookkeep
 
 ### Infrastructure
 
-| Service | Purpose |
-|---|---|
-| MySQL (local for dev) | Primary financial database |
-| MongoDB Atlas | Audit log + AI insight storage |
-| Redis Cloud | Caching, idempotency, rate limiting, session-adjacent counters |
-| AWS S3 | Private-by-default avatar storage, public-read scoped only to `avatars/*` and `videos/*` |
-| AWS EC2 *(provisioned, Phase 10 pending)* | Planned backend host — Docker installed, instance ready |
-| Vercel *(planned)* | Frontend deployment target |
-| Stripe | Subscription billing, Checkout, Billing Portal, webhooks |
-| Resend (on `rakiz.uk`, a verified custom domain) | Transactional email, free tier, 3k/month |
-| Frankfurter.app | Free, no-key live exchange rates |
-| Cloudflare | Domain registration + DNS (`rakiz.uk`) |
+| Service | Purpose | Status |
+|---|---|---|
+| AWS EC2 (Docker + nginx + Certbot) | Backend host, reverse proxy, SSL | **Live** — `api.rakiz.uk` |
+| Vercel | Frontend hosting, auto-deploys from `main` | **Live** — `rakiz-mocha.vercel.app` |
+| MySQL (EC2-local) | Primary financial database | **Live** |
+| MongoDB Atlas | Audit log + AI insight storage | **Live** |
+| Redis Cloud | Caching, idempotency, rate limiting | **Live** |
+| AWS S3 | Private-by-default avatar storage, public-read scoped to `avatars/*` and `videos/*` | **Live** |
+| Stripe | Subscription billing, Checkout, Billing Portal, webhooks | **Live** — production webhook registered |
+| Resend (`rakiz.uk` verified domain) | Transactional email — 3k/month free tier | **Live** |
+| Cloudflare | Domain registration + DNS (`rakiz.uk`) | **Live** |
+| Frankfurter.app | Free, no-key live exchange rates | **Live** |
 
 ---
 
 ## Architecture decisions worth knowing
 
 - **Double-entry ledger, one chokepoint.** Every financial mutation — sends, splits, exchanges, link payments, admin adjustments — flows through a single function (`ledger.service.js`'s `transfer()`), which performs `SELECT FOR UPDATE` row locking on both wallets (in a consistent order to avoid deadlocks), writes a matching debit and credit, and only commits once both sides are correct. Fraud checks, audit logging, real-time emits, and notifications all fire after commit, never blocking or partially applying a transaction.
+
 - **Idempotency is enforced before the database is touched.** A client-generated key is checked against Redis first; a cache hit returns the original result instead of reprocessing.
+
 - **Currency exchange reuses the peer-to-peer transfer path.** Exchanging between your own wallets calls the exact same `transfer()` function as a send to another person, just with the same user as both sender and receiver — meaning it inherits the same locking, double-entry bookkeeping, and audit trail with no separate, less-tested code path.
+
 - **JWT refresh rotation with family tracking.** Each refresh issues a new token and revokes the old one. If a *revoked* token is ever presented again — a sign of theft or reuse — the entire token family is killed, not just that one session.
+
 - **AI never gets raw database access.** The natural-language search hands the model a bounded list of the user's own transactions and asks it to return matching IDs; the fraud-flag explainer hands it the specific flagged transaction plus the user's recent history. Neither path lets the model construct or run a query itself.
+
 - **Stripe webhooks always return 200.** Internal processing issues are logged, not surfaced as webhook failures — this avoids Stripe's retry loop turning a logging hiccup into duplicate event processing.
+
 - **Route protection is layered, not assumed.** `RequireAuth` gates every authenticated page; `RequireAdmin` additionally gates `/admin`. A logged-out visitor hitting any protected URL directly is redirected to `/login` before any page content renders, not after a failed API call.
 
 ---
@@ -308,6 +345,7 @@ GET    /api/health    Liveness check — { status: 'ok', service: 'rakiz-api', t
 - Stripe webhook signature verification using the raw request body (mounted before the global JSON parser specifically so the raw bytes survive)
 - `.env` never committed, enforced via `.gitignore`
 - Admin routes gated by both authentication *and* an explicit role check (`requireAdmin`), never role-checked client-side only
+- Port 5000 closed at the EC2 security group level — backend only reachable via nginx on 443, not directly
 
 ---
 
@@ -421,13 +459,13 @@ rakiz/
 | `exchange_rate_cache` | Cached Frankfurter rates |
 | `webhooks` | Reserved for future outbound webhook support (Business tier) |
 
-## MongoDB Collections
+### MongoDB Collections
 - `audit_events` — every auth event, financial mutation, and admin action, with before/after state where relevant
 - `ai_insights` — generated monthly insight documents, keyed by user + month
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Running Locally
 
 ### Prerequisites
 - Node.js 20+
@@ -519,7 +557,7 @@ In a separate terminal, the whole time you're testing billing:
 ```bash
 stripe listen --forward-to localhost:5000/api/subscriptions/webhook
 ```
-Copy the `whsec_...` it prints into `STRIPE_WEBHOOK_SECRET` in `backend/.env` and restart the backend. This is dev-only — production registers a real webhook URL directly in the Stripe Dashboard.
+Copy the `whsec_...` it prints into `STRIPE_WEBHOOK_SECRET` in `backend/.env` and restart the backend. This is dev-only — production uses a real webhook URL registered directly in the Stripe Dashboard.
 
 ---
 
@@ -532,7 +570,6 @@ These are deliberate, documented scope decisions — not oversights. Full detail
 - **No yearly Stripe billing.** The pricing toggle computes and displays yearly prices for comparison, but only monthly Stripe price IDs exist; both CTAs currently route through monthly checkout.
 - **Contact form is visual-only** — no backend endpoint sends it anywhere yet.
 - **No standalone logo/icon design** — RAKIZ appears as a typographic wordmark throughout; a minimal SVG favicon mark was added for deployment, but no full brand mark was designed.
-- **Phase 10 (production deployment) has not happened yet** — EC2 instance is provisioned with Docker installed, but the backend, nginx + Certbot SSL, and frontend Vercel deploy are still pending.
 
 ---
 

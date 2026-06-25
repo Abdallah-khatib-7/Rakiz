@@ -26,19 +26,12 @@
 - Two older stale entries (178.135.15.59/32, 178.135.19.53/32) are still
   present from earlier in the project — safe to delete, just hygiene, not
   urgent. Not currently in use as of this writing.
-- For Phase 10: add the EC2 instance's IP as a permanent allowlist entry.
-  EC2 IPs are static (or made static via an Elastic IP, which we should
-  provision specifically so this IP never has to change), so this won't
-  have the rotation problem the developer's home connection does.
-- Confirmed this allowlist only gates backend-to-database access — it has
-  no effect on end users. Any user, from any network, connects through the
-  backend server normally; only the backend's own IP needs to be allowed
-  through to MongoDB.
 - UPDATE 2026-06-25: EC2's Elastic IP (98.95.101.217) added to the
-  allowlist as part of Phase 10 deployment. See completed checklist below.
+  allowlist as part of Phase 10 deployment — this is now the permanent
+  entry that matters for production.
 
 
-## Scaling & performance hardening (scheduled for Phase 10)
+## Scaling & performance hardening (deferred until real load exists)
 - [ ] Wallet balance caching in Redis, with airtight invalidation on every
       write inside ledger.service.js transfer(). Stale balance reads are a
       real correctness bug in a financial app, not just a performance nit.
@@ -53,6 +46,9 @@
       tuning connection pools, indexes, or cache TTLs further.
 - [ ] Database index audit based on real slow-query logs once load testing
       reveals what's actually slow.
+- These remain genuinely deferred post-deployment — the app is live with a
+  single backend instance and no real concurrent load yet, so building
+  multi-instance infrastructure now would be premature optimization.
 
 
 ## Deliberately deferred: SMS-verified phone number sending
@@ -70,11 +66,7 @@
     serve arbitrary new users, so it doesn't solve the actual problem.
   - Real usage costs ~$0.05/verification via Twilio Verify, or ~$0.008/SMS
     sending it manually — genuine per-user cost, no viable free tier.
-  - This is a known, scoped, deliberate deferral, not an oversight. The
-    OTP flow itself (generate code, expire after N minutes, rate-limit
-    attempts, confirm-then-mark-verified) is the same shape as
-    auth.service.js's existing email verification, just swapping the
-    delivery channel and adding cost-awareness to the rate limiting.
+  - This is a known, scoped, deliberate deferral, not an oversight.
 - To ship this later: add Twilio account + Verify service, a
   `phone_verified` boolean column, a verify-phone endpoint, and gate
   send-by-phone in wallet.service.js behind that flag.
@@ -82,61 +74,73 @@
 
 ## Currency exchange: fixed rates for SAR, AED, LBP
 - Frankfurter (our live FX data source) doesn't carry SAR, AED, or LBP at
-  all — confirmed via their public currency list. Exchanging into/out of
-  these three would otherwise fail with "no rate available."
+  all — confirmed via their public currency list.
 - SAR and AED are genuine, government-fixed pegs to USD (3.75 and 3.6725
-  respectively, set by their central banks since the 1980s/70s) — hardcoding
-  these is accurate, not an approximation, and they will not drift.
-- LBP is fundamentally different and intentionally flagged as such in code
-  comments (exchange.service.js): it floats on a volatile market with no
+  respectively) — hardcoding these is accurate, not an approximation.
+- LBP is fundamentally different: it floats on a volatile market with no
   official peg since Lebanon's currency crisis. 89,000 LBP/USD is a real
   snapshot rate as of June 2026, but WILL go stale as the real rate moves.
-  This is a deliberate "good enough for demo/portfolio" choice — a real
-  production deployment would need either a live LBP-supporting FX feed or
-  a manual update process to keep the rate current.
+  A real production deployment would need a live LBP-supporting FX feed or
+  a manual update process to keep the rate current — not yet built.
 
 
 ## Local dev reminder: Stripe webhook listener
 - Testing real Stripe checkout locally REQUIRES `stripe listen --forward-to
   localhost:5000/api/subscriptions/webhook` running in its own terminal
-  the entire time you're testing — Stripe can't reach localhost otherwise.
-- Each time the listener restarts, it generates a NEW whsec_ signing secret.
-  Update STRIPE_WEBHOOK_SECRET in backend/.env to match, or webhook signature
-  verification silently fails and subscription_tier never updates.
-- This is dev-only. In Phase 10 production, Stripe calls our real public
-  webhook URL directly (registered in the Stripe Dashboard against the real
-  domain) — no CLI tunnel needed there, and no manually-copied whsec_ value
-  either, since the Dashboard generates a stable one for that endpoint.
+  the entire time you're testing.
+- Each restart of the listener generates a NEW whsec_ signing secret that
+  must be copied into STRIPE_WEBHOOK_SECRET in backend/.env, or signature
+  verification silently fails.
+- Production no longer needs this — see the completed deployment log below.
 
 
 ## Phase 10 production deployment — COMPLETED 2026-06-25
+
+**Live:** Frontend at `https://rakiz-mocha.vercel.app`, backend at
+`https://api.rakiz.uk`. Fully tested end to end, including a real
+registration, login, and admin-balance-adjustment flow against production.
+
 - [x] EC2 Elastic IP allocated and associated (98.95.101.217) — permanent,
       survives instance stop/start.
 - [x] DNS: api.rakiz.uk -> 98.95.101.217 (Cloudflare, proxy off / DNS only).
-- [x] MySQL installed directly on the EC2 instance (decided against a
-      managed provider for now — see reasoning below), schema loaded,
+- [x] MySQL installed directly on the EC2 instance, schema loaded,
       dedicated rakiz_app user created (not using root).
 - [x] Backend containerized via Docker, network_mode: host (since MySQL
       runs natively on the same box, not in a separate container).
 - [x] nginx reverse proxy + real SSL via Certbot — https://api.rakiz.uk
       fully live with a trusted certificate, HTTP auto-redirects to HTTPS.
 - [x] Port 5000 closed at the security group level — only reachable via
-      nginx on 443 now, not directly.
+      nginx on 443 now, not directly. Confirmed via external curl timeout.
 - [x] GOOGLE_CALLBACK_URL updated to the production domain; added as an
       additional authorized redirect URI in Google Cloud Console
       (localhost one kept too, for continued local dev).
 - [x] Real Stripe webhook registered in the Dashboard against
       https://api.rakiz.uk/api/subscriptions/webhook, with a permanent
-      whsec_ secret (not a CLI-generated one) — STRIPE_WEBHOOK_SECRET
-      updated in production .env.
-- [ ] Frontend deploy to Vercel — in progress.
-- [ ] FRONTEND_URL on the backend still needs updating once the real
-      Vercel URL exists (currently a placeholder).
-- [ ] CORS allowed origins in app.js need the real Vercel domain added.
-- [ ] Resend domain send-test from production — not yet verified.
+      whsec_ secret — STRIPE_WEBHOOK_SECRET updated in production .env.
+- [x] Frontend deployed to Vercel (rakiz-mocha.vercel.app), auto-deploys
+      from main. VITE_API_URL set to https://api.rakiz.uk.
+- [x] FRONTEND_URL updated on the backend to the real Vercel URL; this
+      same value feeds app.js's CORS allowlist, so no separate CORS code
+      change was needed.
+- [x] S3 bucket CORS policy updated to allow the production Vercel origin
+      (was previously localhost-only, which broke the hero video on the
+      live site until fixed).
+- [x] Vercel SPA routing fixed via a vercel.json rewrite rule — without
+      it, directly loading or refreshing any client-side route (e.g.
+      /register) 404'd at Vercel's edge before React Router could handle
+      it.
+- [x] First admin account granted manually via a direct database UPDATE
+      over SSH (`UPDATE users SET role = 'admin' WHERE id = ...`) — there
+      is intentionally no in-app self-promotion path, so this one-time
+      manual step is correct, not a workaround.
+- [ ] Resend domain send-test from production — verification emails were
+      not separately re-tested against the live production registration
+      flow as a dedicated step; worth a deliberate confirmation, though
+      no reason to expect it behaves differently than local dev since the
+      domain and API key are unchanged.
 
 ### Real incident during this deployment: SSH outage
-Installing nginx + certbot somehow left ssh.service unlinked from
+Installing nginx + certbot left ssh.service unlinked from
 multi-user.target.wants/ (the unit file stayed intact, just not enabled
 for boot) — SSH became completely unreachable, confirmed even from AWS's
 own internal network via CloudShell, ruling out any security-group/client
@@ -158,7 +162,15 @@ new managed provider (e.g. Aiven, mentioned as an option in the original
 brief) — avoided adding yet another new account/service during an already
 service-heavy build (MongoDB, Redis, Stripe, Resend, Cloudflare). Real,
 acknowledged tradeoff: the database's durability is now tied to this one
-EC2 instance's EBS volume. No automated backup strategy is in place yet.
+EC2 instance's EBS volume, with no automated backup strategy in place.
 Migrating to a managed MySQL later remains straightforward since the
 schema itself doesn't change — this was a pragmatic "ship it" choice, not
 a permanent architectural decision.
+
+### Granting the first admin account
+There is intentionally no API endpoint or UI path for a user to grant
+themselves (or anyone else) the admin role — that would be a serious
+privilege-escalation hole. The first admin account on the live production
+database was set via a direct SQL UPDATE, run manually over SSH, once.
+Any future admin accounts should be granted by an existing admin through
+proper account review, not by repeating this manual step casually.
