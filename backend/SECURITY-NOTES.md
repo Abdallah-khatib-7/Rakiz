@@ -34,6 +34,8 @@
   no effect on end users. Any user, from any network, connects through the
   backend server normally; only the backend's own IP needs to be allowed
   through to MongoDB.
+- UPDATE 2026-06-25: EC2's Elastic IP (98.95.101.217) added to the
+  allowlist as part of Phase 10 deployment. See completed checklist below.
 
 
 ## Scaling & performance hardening (scheduled for Phase 10)
@@ -107,20 +109,56 @@
   either, since the Dashboard generates a stable one for that endpoint.
 
 
-## Pending for Phase 10: production environment checklist
-A running list of things specifically tied to going live, separate from the
-items above which are either already fixed or independently deferred.
-- [ ] EC2 Elastic IP — make the instance's public IP permanent before
-      pointing anything (DNS, Atlas allowlist, OAuth callback URLs) at it.
-- [ ] Update GOOGLE_CALLBACK_URL, FRONTEND_URL, API_URL in backend/.env to
-      real production domains instead of localhost.
-- [ ] Register the real Stripe webhook URL in the Stripe Dashboard, get a
-      permanent STRIPE_WEBHOOK_SECRET from there (not a CLI-generated one).
-- [ ] nginx + Certbot for SSL on the EC2 instance.
-- [ ] Frontend deploy to Vercel, with VITE_API_URL pointed at the real
-      backend domain.
-- [ ] Re-verify the rakiz.uk domain's Resend DNS records still resolve
-      correctly from the production environment (should be unaffected,
-      but worth a real send-test post-deploy rather than assuming).
-- [ ] CORS allowed origins in app.js need the real production frontend
-      domain added, not just localhost:5173.
+## Phase 10 production deployment — COMPLETED 2026-06-25
+- [x] EC2 Elastic IP allocated and associated (98.95.101.217) — permanent,
+      survives instance stop/start.
+- [x] DNS: api.rakiz.uk -> 98.95.101.217 (Cloudflare, proxy off / DNS only).
+- [x] MySQL installed directly on the EC2 instance (decided against a
+      managed provider for now — see reasoning below), schema loaded,
+      dedicated rakiz_app user created (not using root).
+- [x] Backend containerized via Docker, network_mode: host (since MySQL
+      runs natively on the same box, not in a separate container).
+- [x] nginx reverse proxy + real SSL via Certbot — https://api.rakiz.uk
+      fully live with a trusted certificate, HTTP auto-redirects to HTTPS.
+- [x] Port 5000 closed at the security group level — only reachable via
+      nginx on 443 now, not directly.
+- [x] GOOGLE_CALLBACK_URL updated to the production domain; added as an
+      additional authorized redirect URI in Google Cloud Console
+      (localhost one kept too, for continued local dev).
+- [x] Real Stripe webhook registered in the Dashboard against
+      https://api.rakiz.uk/api/subscriptions/webhook, with a permanent
+      whsec_ secret (not a CLI-generated one) — STRIPE_WEBHOOK_SECRET
+      updated in production .env.
+- [ ] Frontend deploy to Vercel — in progress.
+- [ ] FRONTEND_URL on the backend still needs updating once the real
+      Vercel URL exists (currently a placeholder).
+- [ ] CORS allowed origins in app.js need the real Vercel domain added.
+- [ ] Resend domain send-test from production — not yet verified.
+
+### Real incident during this deployment: SSH outage
+Installing nginx + certbot somehow left ssh.service unlinked from
+multi-user.target.wants/ (the unit file stayed intact, just not enabled
+for boot) — SSH became completely unreachable, confirmed even from AWS's
+own internal network via CloudShell, ruling out any security-group/client
+issue. Status checks (system/instance/EBS) all passed, so the VM itself
+was healthy throughout; only sshd was affected.
+
+Recovered via the standard AWS EBS-detach procedure: stopped the instance,
+detached the root volume, attached it as a secondary disk to a temporary
+helper instance in the same AZ, mounted it, chrooted in, ran
+`systemctl enable ssh`, cleanly unmounted, reattached the volume to the
+original instance as /dev/sda1, restarted it. Docker's
+`restart: unless-stopped` policy brought rakiz-api back up automatically
+once the instance was running again — no data or container state was lost
+at any point in this process.
+
+### MySQL: EC2-local vs. managed, decision and tradeoff
+Chose to install MySQL directly on the EC2 instance rather than set up a
+new managed provider (e.g. Aiven, mentioned as an option in the original
+brief) — avoided adding yet another new account/service during an already
+service-heavy build (MongoDB, Redis, Stripe, Resend, Cloudflare). Real,
+acknowledged tradeoff: the database's durability is now tied to this one
+EC2 instance's EBS volume. No automated backup strategy is in place yet.
+Migrating to a managed MySQL later remains straightforward since the
+schema itself doesn't change — this was a pragmatic "ship it" choice, not
+a permanent architectural decision.
